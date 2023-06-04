@@ -19,6 +19,7 @@ typedef enum AstNodeType {
     AstNodeType_ExpressionNumber,
     AstNodeType_ExpressionString,
     AstNodeType_ExpressionFunction,
+    AstNodeType_InfixOperator,
 } AstNodeType;
 
 typedef enum AstTypeName {
@@ -97,6 +98,19 @@ typedef struct AstNodeExpressionFunction {
     List parameters;
 } AstNodeExpressionFunction;
 
+typedef enum AstNodeOperatorType {
+    AstNodeOperatorType_Addition,
+    AstNodeOperatorType_Subtraction,
+    AstNodeOperatorType_Multiplication,
+    AstNodeOperatorType_Division,
+} AstNodeOperatorType;
+
+typedef struct AstNodeInfixOperator {
+    AstNodeOperatorType type;
+    AstNode* left;
+    AstNode* right;
+} AstNodeInfixOperator;
+
 typedef struct AstNode {
     AstNodeType type;
     union {
@@ -113,6 +127,7 @@ typedef struct AstNode {
         AstNodeExpressionNumber expression_number;
         AstNodeExpressionString expression_string;
         AstNodeExpressionFunction expression_function;
+        AstNodeInfixOperator infix_operator;
     } data;
 } AstNode;
 

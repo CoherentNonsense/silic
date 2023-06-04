@@ -43,6 +43,23 @@ static Token* token_expect(ParserContext* context, TokenType type) {
     return token;
 }
 
+static void infix_precedence(Token* operator, int* left, int* right) {
+    switch (operator->type) {
+        case TokenType_Plus:
+        case TokenType_Dash:
+            *left = 1;
+            *right = 2;
+            break;
+        case TokenType_Star:
+        case TokenType_Slash:
+            *left = 3;
+            *right = 4;
+            break;
+        default:
+            *left = -1;
+    }
+}
+
 static AstNode* parse_type_name(ParserContext* context) {
     AstNode* type_name = node_new(AstNodeType_TypeName);
 
@@ -95,7 +112,23 @@ static AstNode* parse_pattern(ParserContext* context) {
     return pattern;
 }
 
-static AstNode* parse_expression(ParserContext* context) {
+static AstNode* parse_expression(ParserContext* context);
+
+static AstNode* parse_number_literal(ParserContext* context) {
+    Token* token = current_token(context);
+    context->token_index += 1;
+
+    AstNode* number_literal = node_new(AstNodeType_ExpressionNumber);
+
+    number_literal->data.expression_number.value = string_from_buffer(
+        context->source.data + token->start,
+        token->end - token->start
+    );
+
+    return number_literal;
+}
+
+static AstNode* parse_expression_primary(ParserContext* context) {
     Token* token = current_token(context);
     context->token_index += 1;
 
@@ -149,6 +182,58 @@ static AstNode* parse_expression(ParserContext* context) {
             sil_panic("Unexpected expression");
         
     }
+}
+
+static AstNode* parse_expression_bp(ParserContext* context, int precedence) {
+    AstNode* left_expression = parse_expression_primary(context);
+
+    int left;
+    int right;
+    while (1) {
+        // check if there is an infix operator (+, -, *, /)
+        Token* operator_token = current_token(context);
+        infix_precedence(operator_token, &left, &right);
+        if (left == -1) {
+            break;
+        }
+
+        if (left < precedence) {
+            break;
+        }
+        context->token_index += 1;
+        
+        AstNode* right_expression = parse_expression_bp(context, right);
+        AstNode* operator = node_new(AstNodeType_InfixOperator);
+
+        switch (operator_token->type) {
+            case TokenType_Plus:        
+                operator->data.infix_operator.type = AstNodeOperatorType_Addition;
+                break;
+            case TokenType_Dash:
+                operator->data.infix_operator.type = AstNodeOperatorType_Subtraction;
+                break;
+            case TokenType_Star:
+                operator->data.infix_operator.type = AstNodeOperatorType_Multiplication;
+                break;
+            case TokenType_Slash:
+                operator->data.infix_operator.type = AstNodeOperatorType_Multiplication;
+                break;
+            default:
+                sil_panic("Parser Error: Unhandled operator");
+        }
+
+        operator->data.infix_operator.left = left_expression;
+        operator->data.infix_operator.right = right_expression;
+
+
+        left_expression = operator;
+    }
+
+    return left_expression;
+}
+
+static AstNode* parse_expression(ParserContext* context) {
+    return parse_expression_bp(context, 0);
 }
 
 // statement: [returnStatement | ExpressionStatment] ;
@@ -228,6 +313,10 @@ static AstNode* parse_fn_proto(ParserContext* context) {
     while (current_token(context)->type != TokenType_RParen) { 
         AstNode* pattern = parse_pattern(context);
         list_push(AstNode*, param_list, &pattern);
+
+        if (current_token(context)->type == TokenType_Comma) {
+            context->token_index += 1;
+        }
     }
 
     token_expect(context, TokenType_RParen); 
@@ -354,9 +443,14 @@ void parser_print_ast(AstNode *node) {
             break;
         case AstNodeType_StatementExpression:
             printf(">\texpression statement\n");
+            parser_print_ast(node->data.statement_expression.expression);
             break;
         case AstNodeType_StatementReturn:
             printf(">\treturn statement: \n");
+            parser_print_ast(node->data.statement_return.expression);
+            break;
+        case AstNodeType_InfixOperator:
+            printf(">>\tInfix operator:\n");
             break;
             
         default:

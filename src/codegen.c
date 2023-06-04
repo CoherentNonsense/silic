@@ -122,8 +122,28 @@ static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* express
         }
         case AstNodeType_ExpressionNumber: {
             String number_text = expression->data.expression_number.value;
-            printf("NUMBER: %.*s\n", number_text.length, number_text.data);
             return LLVMConstIntOfStringAndSize(LLVMInt32Type(), number_text.data, number_text.length, 10);
+        }
+        case AstNodeType_InfixOperator: {
+            LLVMValueRef left = codegen_expression(
+                context,
+                expression->data.infix_operator.left
+            );
+            LLVMValueRef right = codegen_expression(
+                context,
+                expression->data.infix_operator.right
+            );
+
+            switch (expression->data.infix_operator.type) {
+                case AstNodeOperatorType_Addition:
+                    return LLVMBuildAdd(context->builder, left, right, "");
+                case AstNodeOperatorType_Subtraction:
+                    return LLVMBuildSub(context->builder, left, right, "");
+                case AstNodeOperatorType_Multiplication:
+                    return LLVMBuildMul(context->builder, left, right, "");
+                default:
+                    sil_panic("Code Gen Error: Unhandled infix operator");
+            }
         }
         default:
             sil_panic("Code Gen Error: Invalid expression");
@@ -222,5 +242,5 @@ void codegen_generate(AstNode* ast) {
     codegen_root(&context);
 
     LLVMDumpModule(context.module);
-    LLVMPrintModuleToFile(context.module, "hello.ll", NULL);
+    // LLVMPrintModuleToFile(context.module, "hello.ll", NULL);
 }

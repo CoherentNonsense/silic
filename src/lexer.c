@@ -267,7 +267,9 @@ List* tokenize(String source) {
 
             case TokenizerState_Slash:
                 if (current_char != '/') {
-                    sil_panic("Expected '/'");
+                    end_token(&context);
+                    context.state = TokenizerState_Start;
+                    break;
                 }
                 context.state = TokenizerState_Comment;
                 break;
