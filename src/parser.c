@@ -216,7 +216,7 @@ static AstNode* parse_expression_bp(ParserContext* context, int precedence) {
                 operator->data.infix_operator.type = AstNodeOperatorType_Multiplication;
                 break;
             case TokenType_Slash:
-                operator->data.infix_operator.type = AstNodeOperatorType_Multiplication;
+                operator->data.infix_operator.type = AstNodeOperatorType_Division;
                 break;
             default:
                 sil_panic("Parser Error: Unhandled operator");

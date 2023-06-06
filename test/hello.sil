@@ -1,7 +1,7 @@
 extern fn puts(message: *u8) -> i32;
 
 fn add() -> i32 {
-    return 0 + 0;
+    return 1 - 1;
 }
 
 fn main() -> i32 {

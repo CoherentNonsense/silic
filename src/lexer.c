@@ -267,6 +267,9 @@ List* tokenize(String source) {
 
             case TokenizerState_Slash:
                 if (current_char != '/') {
+                    context.offset -= 1;
+                    context.position.column -= 1;
+                    begin_token(&context, TokenType_Slash);
                     end_token(&context);
                     context.state = TokenizerState_Start;
                     break;

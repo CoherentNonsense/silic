@@ -141,6 +141,8 @@ static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* express
                     return LLVMBuildSub(context->builder, left, right, "");
                 case AstNodeOperatorType_Multiplication:
                     return LLVMBuildMul(context->builder, left, right, "");
+                case AstNodeOperatorType_Division:
+                    return LLVMBuildSDiv(context->builder, left, right, "");
                 default:
                     sil_panic("Code Gen Error: Unhandled infix operator");
             }
