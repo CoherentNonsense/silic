@@ -1,9 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "string.h"
+#include "string_buffer.h"
 #include "list.h"
-#include "string.h"
 #include "util.h"
 
 typedef enum TokenType {

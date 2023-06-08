@@ -1,20 +1,15 @@
 #include "codegen.h"
-#include "hashmap.h"
+
+#include "codegen/analyze.h"
 #include "list.h"
-#include "parser.h"
-#include "string.h"
+#include "string_buffer.h"
 #include "util.h"
+
 #include "llvm-c/Core.h"
 #include "llvm-c/Types.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct CodegenContext {
-    LLVMModuleRef module;
-    LLVMBuilderRef builder;
-    AstNode* current_node;
-    HashMap function_map;
-} CodegenContext;
 
 static LLVMTypeRef to_llvm_type(AstNode* type_name) {
     if (type_name->data.type_name.type == AstNodeTypeNameType_Pointer) {
@@ -27,43 +22,6 @@ static LLVMTypeRef to_llvm_type(AstNode* type_name) {
         case AstTypeName_i32: return LLVMInt32Type();
         case AstTypeName_u8: return LLVMInt8Type();
         default: sil_panic("Code Gen Error: Cannot convert sil type to LLVM type");
-    }
-}
-
-static void analyze_extern_function(CodegenContext* context, AstNode* extern_fn) {
-    AstNode* fn_proto = extern_fn->data.extern_fn.prototype;
-    String name = fn_proto->data.fn_proto.name;
-
-    if (map_has(&context->function_map, name)) {
-        sil_panic("Multiple function definitions: %.*s", name.length, name.data);
-    }
-    map_insert(&context->function_map, name, extern_fn);
-}
-
-static void analyze_function_definition(CodegenContext* context, AstNode* fn) {
-    AstNode* fn_proto = fn->data.fn.prototype;
-    String name = fn_proto->data.fn_proto.name;
-
-    if (map_has(&context->function_map, name)) {
-        sil_panic("Multiple function definitions: %.*s", name.length, name.data);
-    }
-    map_insert(&context->function_map, name, fn);
-}
-
-static void analyze_ast(CodegenContext* context, AstNode* root) {
-    List* function_list = &root->data.root.function_list;
-    for (int i = 0; i < function_list->length; i++) {
-        AstNode* item = *list_get(AstNode*, function_list, i);
-        switch (item->type) {
-            case AstNodeType_Fn:
-                analyze_function_definition(context, item);
-                break;
-            case AstNodeType_ExternFn:
-                analyze_extern_function(context, item);
-                break;
-            default:
-                sil_panic("Code Gen Error: Could not analyze root function");
-        }
     }
 }
 
@@ -135,13 +93,13 @@ static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* express
             );
 
             switch (expression->data.infix_operator.type) {
-                case AstNodeOperatorType_Addition:
+                case BinaryOperatorType_Addition:
                     return LLVMBuildAdd(context->builder, left, right, "");
-                case AstNodeOperatorType_Subtraction:
+                case BinaryOperatorType_Subtraction:
                     return LLVMBuildSub(context->builder, left, right, "");
-                case AstNodeOperatorType_Multiplication:
+                case BinaryOperatorType_Multiplication:
                     return LLVMBuildMul(context->builder, left, right, "");
-                case AstNodeOperatorType_Division:
+                case BinaryOperatorType_Division:
                     return LLVMBuildSDiv(context->builder, left, right, "");
                 default:
                     sil_panic("Code Gen Error: Unhandled infix operator");
@@ -239,7 +197,7 @@ void codegen_generate(AstNode* ast) {
     context.builder = LLVMCreateBuilder();
     context.module = LLVMModuleCreateWithName("SilModule");
 
-    analyze_ast(&context, ast);
+    codegen_analyze(&context, ast);
 
     codegen_root(&context);
 

@@ -1,6 +1,7 @@
 #include "lexer.h"
+
 #include "list.h"
-#include "string.h"
+#include "string_buffer.h"
 #include "util.h"
 
 #include <stdio.h>

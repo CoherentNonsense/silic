@@ -1,8 +1,8 @@
-#include "codegen.h"
 #include "string.h"
-#include "lexer.h"
+#include "lexer/lexer.h"
+#include "codegen/codegen.h"
+#include "parser/parser.h"
 #include "list.h"
-#include "parser.h"
 #include "util.h"
 #include "llvm-c/Types.h"
 

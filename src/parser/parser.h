@@ -1,10 +1,18 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "expression.h"
+#include "lexer/lexer.h"
 #include "list.h"
-#include "string.h"
+#include "string_buffer.h"
 #include "llvm-c/Types.h"
 #include <stddef.h>
+
+typedef struct ParserContext {
+    String source;
+    List* token_list;
+    int token_index;
+} ParserContext;
 
 typedef enum AstNodeType {
     AstNodeType_Root,
@@ -98,19 +106,6 @@ typedef struct AstNodeExpressionFunction {
     List parameters;
 } AstNodeExpressionFunction;
 
-typedef enum AstNodeOperatorType {
-    AstNodeOperatorType_Addition,
-    AstNodeOperatorType_Subtraction,
-    AstNodeOperatorType_Multiplication,
-    AstNodeOperatorType_Division,
-} AstNodeOperatorType;
-
-typedef struct AstNodeInfixOperator {
-    AstNodeOperatorType type;
-    AstNode* left;
-    AstNode* right;
-} AstNodeInfixOperator;
-
 typedef struct AstNode {
     AstNodeType type;
     union {
@@ -131,8 +126,13 @@ typedef struct AstNode {
     } data;
 } AstNode;
 
+void skip_token(ParserContext* context);
+Token* current_token(ParserContext* context);
+Token* token_expect(ParserContext* context, TokenType type);
+AstNode* node_new(AstNodeType type);
+
 AstNode* parse(String source, List* token_list);
 
-void parser_print_ast(AstNode* node);    
+void parser_print_ast(AstNode* node);
 
 #endif
