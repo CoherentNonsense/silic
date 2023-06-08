@@ -1,5 +1,6 @@
 #include "expression.h"
 
+#include "lexer/lexer.h"
 #include "parser.h"
 
 static void infix_precedence(Token* operator, int* left, int* right) {
@@ -38,6 +39,30 @@ static AstNode* parse_expression_primary(ParserContext* context) {
     context->token_index += 1;
 
     switch (token->type) {
+
+        case TokenType_Tilde: {
+            AstNode* bitwise_complement = node_new(AstNodeType_UnaryOperator);
+            bitwise_complement->data.unary_operator.type = UnaryOperatorType_BitwiseComplement;
+            bitwise_complement->data.unary_operator.value = parse_expression_primary(context);
+
+            return bitwise_complement;
+        }
+
+        case TokenType_Dash: {
+            AstNode* bitwise_complement = node_new(AstNodeType_UnaryOperator);
+            bitwise_complement->data.unary_operator.type = UnaryOperatorType_Negation;
+            bitwise_complement->data.unary_operator.value = parse_expression_primary(context);
+
+            return bitwise_complement;
+        }
+
+        case TokenType_Bang: {
+            AstNode* bitwise_complement = node_new(AstNodeType_UnaryOperator);
+            bitwise_complement->data.unary_operator.type = UnaryOperatorType_LogicalNegation;
+            bitwise_complement->data.unary_operator.value = parse_expression_primary(context);
+
+            return bitwise_complement;
+        }
 
         case TokenType_Symbol: {
             AstNode* fn_call = node_new(AstNodeType_ExpressionFunction);

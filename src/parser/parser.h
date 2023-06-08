@@ -28,6 +28,7 @@ typedef enum AstNodeType {
     AstNodeType_ExpressionString,
     AstNodeType_ExpressionFunction,
     AstNodeType_InfixOperator,
+    AstNodeType_UnaryOperator,
 } AstNodeType;
 
 typedef enum AstTypeName {
@@ -123,6 +124,7 @@ typedef struct AstNode {
         AstNodeExpressionString expression_string;
         AstNodeExpressionFunction expression_function;
         AstNodeInfixOperator infix_operator;
+        AstNodeUnaryOperator unary_operator;
     } data;
 } AstNode;
 

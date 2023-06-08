@@ -1,5 +1,6 @@
 #include "lexer.h"
 
+#include "codegen/codegen.h"
 #include "list.h"
 #include "string_buffer.h"
 #include "util.h"
@@ -190,6 +191,14 @@ List* tokenize(String source) {
                         break;
                     case ')':
                         begin_token(&context, TokenType_RParen);
+                        end_token(&context);
+                        break;
+                    case '~':
+                        begin_token(&context, TokenType_Tilde);
+                        end_token(&context);
+                        break;
+                    case '!':
+                        begin_token(&context, TokenType_Bang);
                         end_token(&context);
                         break;
                     case '=':

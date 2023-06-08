@@ -25,6 +25,8 @@ typedef enum TokenType {
     TokenType_Arrow,
     TokenType_Star,
     TokenType_Slash,
+    TokenType_Tilde,
+    TokenType_Bang,
 
     TokenType_Equals,
     TokenType_Plus,

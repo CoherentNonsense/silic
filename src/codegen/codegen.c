@@ -2,6 +2,8 @@
 
 #include "codegen/analyze.h"
 #include "list.h"
+#include "parser/expression.h"
+#include "parser/parser.h"
 #include "string_buffer.h"
 #include "util.h"
 
@@ -81,6 +83,19 @@ static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* express
         case AstNodeType_ExpressionNumber: {
             String number_text = expression->data.expression_number.value;
             return LLVMConstIntOfStringAndSize(LLVMInt32Type(), number_text.data, number_text.length, 10);
+        }
+        case AstNodeType_UnaryOperator: {
+            LLVMValueRef value = codegen_expression(
+                context,
+                expression->data.unary_operator.value
+            );
+
+            switch (expression->data.unary_operator.type) {
+                case UnaryOperatorType_Negation:
+                    return LLVMBuildNeg(context->builder, value, "");
+                default:
+                    sil_panic("Code Gen Error: Unhandled unary operator");
+            }
         }
         case AstNodeType_InfixOperator: {
             LLVMValueRef left = codegen_expression(
