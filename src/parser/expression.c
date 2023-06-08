@@ -98,7 +98,6 @@ static AstNode* parse_expression_primary(ParserContext* context) {
             );
             return string_literal;
         }
-
         case TokenType_NumberLiteral: {
             AstNode* number_literal = node_new(AstNodeType_ExpressionNumber);
 
@@ -115,7 +114,15 @@ static AstNode* parse_expression_primary(ParserContext* context) {
 }
 
 static AstNode* parse_expression_prec(ParserContext* context, int precedence) {
-    AstNode* left_expression = parse_expression_primary(context);
+    AstNode* left_expression;
+    if (current_token(context)->type == TokenType_LParen) {
+        context->token_index += 1;
+        left_expression = parse_expression(context);
+        token_expect(context, TokenType_RParen);
+        context->token_index += 1;
+    } else {
+        left_expression = parse_expression_primary(context);
+    }
 
     int left;
     int right;
