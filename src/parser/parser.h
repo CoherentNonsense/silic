@@ -27,6 +27,7 @@ typedef enum AstNodeType {
     AstNodeType_ExpressionNumber,
     AstNodeType_ExpressionString,
     AstNodeType_ExpressionFunction,
+    AstNodeType_IfExpression,
     AstNodeType_InfixOperator,
     AstNodeType_UnaryOperator,
 } AstNodeType;
@@ -123,6 +124,7 @@ typedef struct AstNode {
         AstNodeExpressionNumber expression_number;
         AstNodeExpressionString expression_string;
         AstNodeExpressionFunction expression_function;
+        AstNodeIfExpression if_expression;
         AstNodeInfixOperator infix_operator;
         AstNodeUnaryOperator unary_operator;
     } data;
@@ -134,6 +136,7 @@ Token* token_expect(ParserContext* context, TokenType type);
 AstNode* node_new(AstNodeType type);
 
 AstNode* parse(String source, List* token_list);
+AstNode* parse_block(ParserContext* context);
 
 void parser_print_ast(AstNode* node);
 

@@ -91,38 +91,46 @@ static AstNode* parse_pattern(ParserContext* context) {
     return pattern;
 }
 
-// statement: [returnStatement | ExpressionStatment] ;
+// statement: [returnStatement | ifStatement | ExpressionStatment] ;
 static AstNode* parse_statement(ParserContext* context) {
     Token* token = current_token(context);
 
-    if (token->type == TokenType_KeywordReturn) {
-        AstNode* statement = node_new(AstNodeType_StatementReturn);
+    switch (token->type) {
+        case TokenType_KeywordReturn: {
+            AstNode* statement = node_new(AstNodeType_StatementReturn);
 
-        context->token_index += 1; // consume 'ret'
+            context->token_index += 1; // consume 'ret'
 
-        AstNode* expression = parse_expression(context);
+            AstNode* expression = parse_expression(context);
 
-        statement->data.statement_return.expression = expression;
+            statement->data.statement_return.expression = expression;
 
-        token_expect(context, TokenType_Semicolon);
-        context->token_index += 1;
-    
-        return statement;
-    }
+            token_expect(context, TokenType_Semicolon);
+            context->token_index += 1;
+        
+            return statement;
+        }
 
-    AstNode* statement = node_new(AstNodeType_StatementExpression);
+        case TokenType_KeywordIf: {
+            return parse_expression(context);
+        }
+        
+        default: {
+            AstNode* statement = node_new(AstNodeType_StatementExpression);
 
-    AstNode* expression = parse_expression(context);
+            AstNode* expression = parse_expression(context);
 
-    statement->data.statement_expression.expression = expression;
+            statement->data.statement_expression.expression = expression;
 
-    token_expect(context, TokenType_Semicolon);
-    context->token_index += 1;
+            token_expect(context, TokenType_Semicolon);
+            context->token_index += 1;
 
-    return statement;
+            return statement;
+        }
+    } 
 }
 
-static AstNode* parse_block(ParserContext* context) {
+AstNode* parse_block(ParserContext* context) {
     AstNode* body = node_new(AstNodeType_Block);
 
     token_expect(context, TokenType_LBrace);

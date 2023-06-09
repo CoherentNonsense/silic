@@ -17,6 +17,7 @@ typedef enum LexerState {
     TokenizerState_Dash,
     TokenizerState_Slash,
     TokenizerState_Comment,
+    TokenizerState_MultilineComment,
 } TokenizerState;
 
 typedef struct LexerContext{
@@ -125,6 +126,14 @@ static void end_token(TokenizerContext* context) {
             token->type = TokenType_KeywordLet;
         } else if (token_symbol_compare(context->source, token, "extern")) {
             token->type = TokenType_KeywordExtern;
+        } else if (token_symbol_compare(context->source, token, "if")) {
+            token->type = TokenType_KeywordIf;
+        } else if (token_symbol_compare(context->source, token, "else")) {
+            token->type = TokenType_KeywordElse;
+        } else if (token_symbol_compare(context->source, token, "true")) {
+            token->type = TokenType_KeywordTrue;
+        } else if (token_symbol_compare(context->source, token, "false")) {
+            token->type = TokenType_KeywordFalse;
         }
     }
 }
@@ -276,19 +285,29 @@ List* tokenize(String source) {
                 break;
 
             case TokenizerState_Slash:
-                if (current_char != '/') {
+                if (current_char == '*') {
+                    context.state = TokenizerState_MultilineComment;
+                } else if (current_char == '/') {
+                    context.state = TokenizerState_Comment;
+                } else {
                     context.offset -= 1;
                     context.position.column -= 1;
                     begin_token(&context, TokenType_Slash);
                     end_token(&context);
                     context.state = TokenizerState_Start;
-                    break;
                 }
-                context.state = TokenizerState_Comment;
+
                 break;
 
             case TokenizerState_Comment:
                 if (current_char == '\n') {
+                    context.state = TokenizerState_Start;
+                }
+                break;
+
+            case TokenizerState_MultilineComment:
+                if (current_char == '*' && *(context.source.data + context.offset + 1) == '/') {
+                    context.offset += 1;
                     context.state = TokenizerState_Start;
                 }
                 break;

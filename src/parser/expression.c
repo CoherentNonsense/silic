@@ -64,6 +64,21 @@ static AstNode* parse_expression_primary(ParserContext* context) {
             return bitwise_complement;
         }
 
+        case TokenType_KeywordIf: {
+            AstNode* if_expression = node_new(AstNodeType_IfExpression);
+            if_expression->data.if_expression.condition = parse_expression(context);
+            if_expression->data.if_expression.body = parse_block(context);
+            if (current_token(context)->type == TokenType_KeywordElse) {
+                context->token_index += 1;
+                if (current_token(context)->type == TokenType_KeywordIf) {
+                    if_expression->data.if_expression.alt = parse_expression_primary(context);
+                } else {
+                    if_expression->data.if_expression.alt = parse_block(context);
+                }
+            }
+            return if_expression;
+        }
+
         case TokenType_Symbol: {
             AstNode* fn_call = node_new(AstNodeType_ExpressionFunction);
             fn_call->data.expression_function.name = string_from_buffer(

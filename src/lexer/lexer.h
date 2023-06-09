@@ -36,6 +36,10 @@ typedef enum TokenType {
     TokenType_KeywordFn,
     TokenType_KeywordReturn,
     TokenType_KeywordExtern,
+    TokenType_KeywordIf,
+    TokenType_KeywordElse,
+    TokenType_KeywordTrue,
+    TokenType_KeywordFalse,
 } TokenType;
 
 typedef struct TextPosition {

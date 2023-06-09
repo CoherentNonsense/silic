@@ -4,6 +4,13 @@
 typedef struct ParserContext ParserContext;
 typedef struct AstNode AstNode;
 
+
+typedef struct AstNodeIfExpression {
+    AstNode* condition;
+    AstNode* body;
+    AstNode* alt;
+} AstNodeIfExpression;
+
 typedef enum UnaryOperatorType {
     UnaryOperatorType_Negation,
     UnaryOperatorType_BitwiseComplement,
