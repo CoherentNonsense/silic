@@ -1,22 +1,63 @@
 #include "hashmap.h"
 #include "list.h"
+#include "string_buffer.h"
+#include "util.h"
 
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+
+static size_t hash_function(String string) {
+    // FNV 32-bit hash
+    unsigned int h = 2166136261;
+    for (int i = 0; i < string.length; i += 1) {
+        h = h ^ ((unsigned char)*(string.data + i));
+        h = h * 16777619;
+    }
+
+    return h;
+}
 
 void map_delete(HashMap* map) {
     list_delete(&map->entries);
 }
 
 void map_insert(HashMap* map, String key, void* value) {
-    Entry* entry = list_add(Entry, &map->entries);
-    entry->key = key;
-    entry->value = value;
+    if (map->entries.length * 5 >= map->entries.capacity * 4) {
+        size_t old_capacity = map->entries.capacity;
+        list_resize(Entry, &map->entries, map->entries.capacity * 2 + 8);
+        for (int i = old_capacity; i < map->entries.capacity; i++) {
+            Entry* entry = list_get(Entry, &map->entries, i);
+            entry->used = 0;
+        }
+    }
+
+    size_t start_index = hash_function(key);
+    for (int i = 0; i < map->entries.capacity; i++) {
+        size_t index = (start_index + i) % map->entries.capacity;
+        Entry* entry = list_get(Entry, &map->entries, index);
+
+        if (entry->used) {
+            continue;
+        }
+
+        entry->key = key;
+        entry->value = value;
+        entry->used = 1;
+
+        map->entries.length += 1;
+
+        return;
+    }
+
+    sil_panic("Hashmap::map_insert trying to insert into full hashmap");
 }
 
-// i'm not using a hash function shhhhh
 void* map_get(HashMap* map, String key) {
-    for (int i = 0; i < map->entries.length; i++) {
-        Entry* entry = list_get(Entry, &map->entries, i);
+    size_t start_index = hash_function(key);
+    for (int i = 0; i < map->entries.capacity; i++) {
+        size_t index = (start_index + i) % map->entries.capacity;
+        Entry* entry = list_get(Entry, &map->entries, index);
         if (string_compare(key, entry->key)) {
             return entry->value;
         }
@@ -26,12 +67,5 @@ void* map_get(HashMap* map, String key) {
 }
 
 int map_has(HashMap* map, String key) {
-    for (int i = 0; i < map->entries.length; i++) {
-        Entry* entry = list_get(Entry, &map->entries, i);
-        if (string_compare(key, entry->key)) {
-            return 1;
-        }
-    }
-
-    return 0;
+    return map_get(map, key) != NULL;
 }

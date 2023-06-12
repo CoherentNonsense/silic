@@ -55,9 +55,7 @@ typedef struct Token {
     String text;
 } Token;
 
-List* tokenize(String source);
-
-Token lexer_next();
+List tokenize(String source);
 
 char* token_string(TokenType type);
 

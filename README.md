@@ -13,7 +13,7 @@ const main = fn () -> i32 {
     puts("Hello, world!\n");
 
     return 0;
-}
+};
 ```
 
 `structs_and_enums.sil`
@@ -38,11 +38,11 @@ const Person = struct {
 ```
 const stm32 = import("stm32-hal");
 
-const wait = fn () {
+const wait = fn () -> {
     for i in [0..2000000] volatile {
         asm nop;
     }
-}
+};
 
 const main = fn () -> ! { 
   stm32.enable_port_clock(stm32.PORT_C);
@@ -52,5 +52,5 @@ const main = fn () -> ! {
     stm32.toggle_led();
     wait();
   }
-}
+};
 ```

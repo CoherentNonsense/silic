@@ -24,11 +24,9 @@ typedef enum AstNodeType {
     AstNodeType_Block,
     AstNodeType_StatementReturn,
     AstNodeType_StatementExpression,
-    AstNodeType_ExpressionNumber,
-    AstNodeType_ExpressionString,
-    AstNodeType_ExpressionFunction,
+    AstNodeType_PrimaryExpression,
     AstNodeType_IfExpression,
-    AstNodeType_InfixOperator,
+    AstNodeType_BinaryOperator,
     AstNodeType_UnaryOperator,
 } AstNodeType;
 
@@ -121,18 +119,16 @@ typedef struct AstNode {
         AstNodeBlock block;
         AstNodeStatementReturn statement_return;
         AstNodeStatementExpression statement_expression;
-        AstNodeExpressionNumber expression_number;
-        AstNodeExpressionString expression_string;
-        AstNodeExpressionFunction expression_function;
+        AstNodePrimaryExpression primary_expression;
         AstNodeIfExpression if_expression;
-        AstNodeInfixOperator infix_operator;
+        AstNodeInfixOperator binary_operator;
         AstNodeUnaryOperator unary_operator;
     } data;
 } AstNode;
 
-void skip_token(ParserContext* context);
+void consume_token(ParserContext* context);
 Token* current_token(ParserContext* context);
-Token* token_expect(ParserContext* context, TokenType type);
+Token* expect_token(ParserContext* context, TokenType type);
 AstNode* node_new(AstNodeType type);
 
 AstNode* parse(String source, List* token_list);

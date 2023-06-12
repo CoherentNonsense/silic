@@ -10,6 +10,7 @@
 typedef struct Entry {
     String key;
     void* value;
+    char used;
 } Entry;
 
 typedef struct HashMap {

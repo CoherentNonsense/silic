@@ -3,43 +3,27 @@
 #include "lexer/lexer.h"
 #include "parser.h"
 
-static void infix_precedence(Token* operator, int* left, int* right) {
+static void operator_precedence(Token* operator, int* left, int* right) {
+    OperatorPrecedence precedence;
     switch (operator->type) {
-        case TokenType_Plus:
-        case TokenType_Dash:
-            *left = 1;
-            *right = 2;
-            break;
-        case TokenType_Star:
-        case TokenType_Slash:
-            *left = 3;
-            *right = 4;
-            break;
-        default:
-            *left = -1;
+        case TokenType_Plus: precedence = OperatorPrecedence_Addition; break;
+        case TokenType_Dash: precedence = OperatorPrecedence_Subtration; break;
+        case TokenType_Star: precedence = OperatorPrecedence_Multiplication; break;
+        case TokenType_Slash: precedence = OperatorPrecedence_Divisioon; break;
+        default: precedence = OperatorPrecedence_Invalid;
     }
-}
 
-static AstNode* parse_number_literal(ParserContext* context) {
-    Token* token = current_token(context);
-    context->token_index += 1;
-
-    AstNode* number_literal = node_new(AstNodeType_ExpressionNumber);
-
-    number_literal->data.expression_number.value = string_from_buffer(
-        context->source.data + token->start,
-        token->end - token->start
-    );
-
-    return number_literal;
+    *left = (precedence * 2) - 1;
+    *right = precedence * 2;
 }
 
 static AstNode* parse_expression_primary(ParserContext* context) {
     Token* token = current_token(context);
-    context->token_index += 1;
+    consume_token(context);
 
     switch (token->type) {
 
+        // TODO: Move to Pratt Parser
         case TokenType_Tilde: {
             AstNode* bitwise_complement = node_new(AstNodeType_UnaryOperator);
             bitwise_complement->data.unary_operator.type = UnaryOperatorType_BitwiseComplement;
@@ -49,19 +33,19 @@ static AstNode* parse_expression_primary(ParserContext* context) {
         }
 
         case TokenType_Dash: {
-            AstNode* bitwise_complement = node_new(AstNodeType_UnaryOperator);
-            bitwise_complement->data.unary_operator.type = UnaryOperatorType_Negation;
-            bitwise_complement->data.unary_operator.value = parse_expression_primary(context);
+            AstNode* negation = node_new(AstNodeType_UnaryOperator);
+            negation->data.unary_operator.type = UnaryOperatorType_Negation;
+            negation->data.unary_operator.value = parse_expression_primary(context);
 
-            return bitwise_complement;
+            return negation;
         }
 
         case TokenType_Bang: {
-            AstNode* bitwise_complement = node_new(AstNodeType_UnaryOperator);
-            bitwise_complement->data.unary_operator.type = UnaryOperatorType_LogicalNegation;
-            bitwise_complement->data.unary_operator.value = parse_expression_primary(context);
+            AstNode* logical_negation = node_new(AstNodeType_UnaryOperator);
+            logical_negation->data.unary_operator.type = UnaryOperatorType_LogicalNegation;
+            logical_negation->data.unary_operator.value = parse_expression_primary(context);
 
-            return bitwise_complement;
+            return logical_negation;
         }
 
         case TokenType_KeywordIf: {
@@ -69,7 +53,7 @@ static AstNode* parse_expression_primary(ParserContext* context) {
             if_expression->data.if_expression.condition = parse_expression(context);
             if_expression->data.if_expression.body = parse_block(context);
             if (current_token(context)->type == TokenType_KeywordElse) {
-                context->token_index += 1;
+                consume_token(context);
                 if (current_token(context)->type == TokenType_KeywordIf) {
                     if_expression->data.if_expression.alt = parse_expression_primary(context);
                 } else {
@@ -80,46 +64,45 @@ static AstNode* parse_expression_primary(ParserContext* context) {
         }
 
         case TokenType_Symbol: {
-            AstNode* fn_call = node_new(AstNodeType_ExpressionFunction);
-            fn_call->data.expression_function.name = string_from_buffer(
-                context->source.data + token->start,
-                token->end - token->start
+            AstNode* fn_call = node_new(AstNodeType_PrimaryExpression);
+            fn_call->data.primary_expression.type = PrimaryExpressionType_Symbol;
+            fn_call->data.primary_expression.function_call.name = string_from_token(
+                context->source.data, token
             );
 
-            token_expect(context, TokenType_LParen);
-            context->token_index += 1;
+            expect_token(context, TokenType_LParen);
 
             if (current_token(context)->type != TokenType_RParen) {
                 AstNode* parameter = parse_expression(context);
                 list_push(
                     AstNode*,
-                    &fn_call->data.expression_function.parameters,
+                    &fn_call->data.primary_expression.function_call.parameters,
                     &parameter
                 );
             }
 
-            token_expect(context, TokenType_RParen);
-            context->token_index += 1;
+            expect_token(context, TokenType_RParen);
 
             return fn_call;
         }
 
         case TokenType_StringLiteral: {
-            AstNode* string_literal = node_new(AstNodeType_ExpressionString);
+            AstNode* string_literal = node_new(AstNodeType_PrimaryExpression);
 
-            string_literal->data.expression_number.value = string_from_buffer(
-                context->source.data + token->start,
-                token->end - token->start
+            string_literal->data.primary_expression.type = PrimaryExpressionType_String;
+            string_literal->data.primary_expression.string = string_from_token(
+                context->source.data, token
             );
             return string_literal;
         }
         case TokenType_NumberLiteral: {
-            AstNode* number_literal = node_new(AstNodeType_ExpressionNumber);
+            AstNode* number_literal = node_new(AstNodeType_PrimaryExpression);
 
-            number_literal->data.expression_number.value = string_from_buffer(
-                context->source.data + token->start,
-                token->end - token->start
+            number_literal->data.primary_expression.type = PrimaryExpressionType_Number;
+            number_literal->data.primary_expression.number = string_from_token(
+                context->source.data, token
             );
+
             return number_literal;
         }
         default:
@@ -131,10 +114,9 @@ static AstNode* parse_expression_primary(ParserContext* context) {
 static AstNode* parse_expression_prec(ParserContext* context, int precedence) {
     AstNode* left_expression;
     if (current_token(context)->type == TokenType_LParen) {
-        context->token_index += 1;
+        consume_token(context);
         left_expression = parse_expression(context);
-        token_expect(context, TokenType_RParen);
-        context->token_index += 1;
+        expect_token(context, TokenType_RParen);
     } else {
         left_expression = parse_expression_primary(context);
     }
@@ -144,7 +126,7 @@ static AstNode* parse_expression_prec(ParserContext* context, int precedence) {
     while (1) {
         // check if there is an infix operator (+, -, *, /)
         Token* operator_token = current_token(context);
-        infix_precedence(operator_token, &left, &right);
+        operator_precedence(operator_token, &left, &right);
         if (left == -1) {
             break;
         }
@@ -152,30 +134,30 @@ static AstNode* parse_expression_prec(ParserContext* context, int precedence) {
         if (left < precedence) {
             break;
         }
-        context->token_index += 1;
+        consume_token(context);
         
         AstNode* right_expression = parse_expression_prec(context, right);
-        AstNode* operator = node_new(AstNodeType_InfixOperator);
+        AstNode* operator = node_new(AstNodeType_BinaryOperator);
 
         switch (operator_token->type) {
             case TokenType_Plus:        
-                operator->data.infix_operator.type = BinaryOperatorType_Addition;
+                operator->data.binary_operator.type = BinaryOperatorType_Addition;
                 break;
             case TokenType_Dash:
-                operator->data.infix_operator.type = BinaryOperatorType_Subtraction;
+                operator->data.binary_operator.type = BinaryOperatorType_Subtraction;
                 break;
             case TokenType_Star:
-                operator->data.infix_operator.type = BinaryOperatorType_Multiplication;
+                operator->data.binary_operator.type = BinaryOperatorType_Multiplication;
                 break;
             case TokenType_Slash:
-                operator->data.infix_operator.type = BinaryOperatorType_Division;
+                operator->data.binary_operator.type = BinaryOperatorType_Division;
                 break;
             default:
                 sil_panic("Parser Error: Unhandled operator");
         }
 
-        operator->data.infix_operator.left = left_expression;
-        operator->data.infix_operator.right = right_expression;
+        operator->data.binary_operator.left = left_expression;
+        operator->data.binary_operator.right = right_expression;
 
 
         left_expression = operator;

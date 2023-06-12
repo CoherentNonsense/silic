@@ -1,6 +1,13 @@
 #include "string_buffer.h"
+
+#include "lexer/lexer.h"
 #include <stdlib.h>
 #include <string.h>
+
+
+String string_from_literal(char* literal) {
+    return (String){ literal, strlen(literal) };
+}
 
 String string_from_buffer(char* start, const size_t length) {
     char* data = malloc(length + 1);
@@ -8,6 +15,13 @@ String string_from_buffer(char* start, const size_t length) {
     data[length] = 0;
 
     return (String){ data, length };
+}
+
+String string_from_token(char* buffer, Token* token) {
+    return string_from_buffer(
+        buffer + token->start,
+        token->end - token->start
+    );
 }
 
 void string_delete(String a) {

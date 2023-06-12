@@ -1,3 +1,4 @@
+#include "hashmap.h"
 #include "string.h"
 #include "lexer/lexer.h"
 #include "codegen/codegen.h"
@@ -100,10 +101,10 @@ int main(int argc, char** argv) {
     String source = string_from_buffer(buffer, length);
 
     printf("Lexing File...\n");
-    List* token_list = tokenize(source);
+    List token_list = tokenize(source);
 
-    for (int i =  0; i < list_length(token_list); i++) {
-        Token* token = list_get(Token, token_list, i);
+    for (int i =  0; i < list_length(&token_list); i++) {
+        Token* token = list_get(Token, &token_list, i);
         printf("%s: ", token_string(token->type));
         size_t token_length = token->end - token->start;
         for (int j = 0; j < token_length; j++) {
@@ -113,16 +114,14 @@ int main(int argc, char** argv) {
     }
 
     printf("\nParsing Tokens...\n");
-    AstNode* ast_root = parse(source, token_list);
+    AstNode* ast_root = parse(source, &token_list);
+    free(buffer);
 
     parser_print_ast(ast_root);
 
     printf("\nGenerating Code...\n");
     codegen_generate(ast_root);
-
-    // free ast
-    free(buffer);
-    list_delete(token_list);
+    list_delete(&token_list);
 
     return EXIT_SUCCESS;
 }

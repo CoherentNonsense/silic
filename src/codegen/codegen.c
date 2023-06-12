@@ -30,7 +30,7 @@ static LLVMTypeRef to_llvm_type(AstNode* type_name) {
 static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* expression);
 
 static LLVMValueRef codegen_fn_call(CodegenContext* context, AstNode* fn_call) {
-    String name = fn_call->data.expression_function.name;
+    String name = fn_call->data.primary_expression.function_call.name;
 
     AstNode* fn = map_get(&context->function_map, name);
     if (fn == NULL) {
@@ -40,8 +40,8 @@ static LLVMValueRef codegen_fn_call(CodegenContext* context, AstNode* fn_call) {
     LLVMValueRef fn_ref = LLVMGetNamedFunction(context->module, name.data);
     AstNode* fn_proto = fn->data.fn.prototype;
 
-    List* parameter_list = &fn_call->data.expression_function.parameters;
-    int param_count = fn_call->data.expression_function.parameters.length;
+    List* parameter_list = &fn_call->data.primary_expression.function_call.parameters;
+    int param_count = fn_call->data.primary_expression.function_call.parameters.length;
     if (param_count != fn->data.fn.prototype->data.fn_proto.parameters.length) {
         sil_panic("Wrong number of arguments");
     }
@@ -66,12 +66,14 @@ static LLVMValueRef codegen_fn_call(CodegenContext* context, AstNode* fn_call) {
     return call_ref;
 }
 
-static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* expression) {
-    switch (expression->type) {
-        case AstNodeType_ExpressionFunction:
-            return codegen_fn_call(context, expression);
-        case AstNodeType_ExpressionString: {
-            String string_text = expression->data.expression_string.value;
+static LLVMValueRef codegen_primary_expression(CodegenContext* context, AstNode* primary) {
+    switch (primary->data.primary_expression.type) {
+        case PrimaryExpressionType_Number:  {
+            String number_text = primary->data.primary_expression.number;
+            return LLVMConstIntOfStringAndSize(LLVMInt32Type(), number_text.data, number_text.length, 10);
+        }
+        case PrimaryExpressionType_String: {
+            String string_text = primary->data.primary_expression.string;
             LLVMValueRef string_global = LLVMBuildGlobalString(context->builder, string_text.data, "");
             return LLVMBuildPointerCast(
                 context->builder,
@@ -80,10 +82,19 @@ static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* express
                 ""
             );
         }
-        case AstNodeType_ExpressionNumber: {
-            String number_text = expression->data.expression_number.value;
-            return LLVMConstIntOfStringAndSize(LLVMInt32Type(), number_text.data, number_text.length, 10);
-        }
+
+        case PrimaryExpressionType_Symbol:
+            return codegen_fn_call(context, primary);
+        default:
+            sil_panic("Code Gen Error: Unhandled primary expression");
+    }
+}
+
+static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* expression) {
+    switch (expression->type) {
+        case AstNodeType_PrimaryExpression:
+            return codegen_primary_expression(context, expression);
+
         case AstNodeType_UnaryOperator: {
             LLVMValueRef value = codegen_expression(
                 context,
@@ -97,17 +108,17 @@ static LLVMValueRef codegen_expression(CodegenContext* context, AstNode* express
                     sil_panic("Code Gen Error: Unhandled unary operator");
             }
         }
-        case AstNodeType_InfixOperator: {
+        case AstNodeType_BinaryOperator: {
             LLVMValueRef left = codegen_expression(
                 context,
-                expression->data.infix_operator.left
+                expression->data.binary_operator.left
             );
             LLVMValueRef right = codegen_expression(
                 context,
-                expression->data.infix_operator.right
+                expression->data.binary_operator.right
             );
 
-            switch (expression->data.infix_operator.type) {
+            switch (expression->data.binary_operator.type) {
                 case BinaryOperatorType_Addition:
                     return LLVMBuildAdd(context->builder, left, right, "");
                 case BinaryOperatorType_Subtraction:
@@ -187,8 +198,12 @@ static void codegen_fn(CodegenContext* context, AstNode* fn) {
 }
 
 static void codegen_root(CodegenContext* context) {
-    for (int i = 0; i < context->function_map.entries.length; i++) {
+    for (int i = 0; i < context->function_map.entries.capacity; i++) {
         Entry* entry = list_get(Entry, &context->function_map.entries, i);
+        if (!entry->used) {
+            continue;
+        }
+
         AstNode* node = entry->value;
         switch (node->type) {
             case AstNodeType_ExternFn:

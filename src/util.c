@@ -21,5 +21,5 @@ void sil_panic(const char* format, ...) {
     vfprintf(stderr, format, args);
     fprintf(stderr, "\n");
     va_end(args);
-    abort();
+    exit(EXIT_FAILURE);
 }

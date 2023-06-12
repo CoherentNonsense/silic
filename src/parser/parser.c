@@ -1,15 +1,15 @@
 #include "parser.h"
 
 #include "lexer/lexer.h"
-#include "list.h"
 #include "parser/expression.h"
+#include "list.h"
 #include "string_buffer.h"
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
-void skip_token(ParserContext* context) {
+void consume_token(ParserContext* context) {
     context->token_index += 1;
 }
 
@@ -17,14 +17,7 @@ Token* current_token(ParserContext* context) {
     return list_get(Token, context->token_list, context->token_index);
 }
 
-AstNode* node_new(AstNodeType type) {
-    AstNode* node = calloc(1, sizeof(AstNode));
-    node->type = type;
-
-    return node;
-}
-
-Token* token_expect(ParserContext* context, TokenType type) {
+Token* expect_token(ParserContext* context, TokenType type) {
     Token* token = current_token(context);
     if (token->type != type) {
         sil_panic(
@@ -36,14 +29,23 @@ Token* token_expect(ParserContext* context, TokenType type) {
         );
     }
 
+    consume_token(context);
+
     return token;
+}
+
+AstNode* node_new(AstNodeType type) {
+    AstNode* node = calloc(1, sizeof(AstNode));
+    node->type = type;
+
+    return node;
 }
 
 static AstNode* parse_type_name(ParserContext* context) {
     AstNode* type_name = node_new(AstNodeType_TypeName);
 
     if (current_token(context)->type == TokenType_Star) {
-        context->token_index += 1;
+        consume_token(context);
         type_name->data.type_name.type = AstNodeTypeNameType_Pointer;
         type_name->data.type_name.child_type = parse_type_name(context);
 
@@ -51,8 +53,7 @@ static AstNode* parse_type_name(ParserContext* context) {
     }
 
     type_name->data.type_name.type = AstNodeTypeNameType_Primitive;
-    Token* token = token_expect(context, TokenType_Symbol);
-    context->token_index += 1;
+    Token* token = expect_token(context, TokenType_Symbol);
     
     AstTypeName primitive;
     if (token_symbol_compare(context->source, token, "i8")) {
@@ -75,16 +76,14 @@ static AstNode* parse_type_name(ParserContext* context) {
 static AstNode* parse_pattern(ParserContext* context) {
     AstNode* pattern = node_new(AstNodeType_Pattern);
 
-    Token* name_token = token_expect(context, TokenType_Symbol);
-    context->token_index += 1;
+    Token* name_token = expect_token(context, TokenType_Symbol);
 
     pattern->data.pattern.name = string_from_buffer(
         context->source.data + name_token->start,
         name_token->end - name_token->start
     );
 
-    token_expect(context, TokenType_Colon);
-    context->token_index += 1;
+    expect_token(context, TokenType_Colon);
 
     pattern->data.pattern.type = parse_type_name(context);
 
@@ -99,14 +98,13 @@ static AstNode* parse_statement(ParserContext* context) {
         case TokenType_KeywordReturn: {
             AstNode* statement = node_new(AstNodeType_StatementReturn);
 
-            context->token_index += 1; // consume 'ret'
+            consume_token(context);
 
             AstNode* expression = parse_expression(context);
 
             statement->data.statement_return.expression = expression;
 
-            token_expect(context, TokenType_Semicolon);
-            context->token_index += 1;
+            expect_token(context, TokenType_Semicolon);
         
             return statement;
         }
@@ -122,8 +120,7 @@ static AstNode* parse_statement(ParserContext* context) {
 
             statement->data.statement_expression.expression = expression;
 
-            token_expect(context, TokenType_Semicolon);
-            context->token_index += 1;
+            expect_token(context, TokenType_Semicolon);
 
             return statement;
         }
@@ -133,13 +130,12 @@ static AstNode* parse_statement(ParserContext* context) {
 AstNode* parse_block(ParserContext* context) {
     AstNode* body = node_new(AstNodeType_Block);
 
-    token_expect(context, TokenType_LBrace);
-    context->token_index += 1;
+    expect_token(context, TokenType_LBrace);
 
     while (1) {
         switch (current_token(context)->type) {
             case TokenType_RBrace:
-                context->token_index += 1;
+                consume_token(context);
                 return body;
             default: {
                 AstNode* statement = parse_statement(context);
@@ -157,19 +153,15 @@ AstNode* parse_block(ParserContext* context) {
 static AstNode* parse_fn_proto(ParserContext* context) {
     AstNode* fn_proto = node_new(AstNodeType_FnProto);
 
-    token_expect(context, TokenType_KeywordFn);
-    context->token_index += 1;
+    expect_token(context, TokenType_KeywordFn);
 
-    Token* token = token_expect(context, TokenType_Symbol);
+    Token* token = expect_token(context, TokenType_Symbol);
     fn_proto->data.fn_proto.name = string_from_buffer(
         context->source.data + token->start,
         token->end - token->start
     );
 
-    context->token_index += 1;
-
-    token_expect(context, TokenType_LParen);
-    context->token_index += 1;
+    expect_token(context, TokenType_LParen);
 
     // parameters
     List* param_list = &fn_proto->data.fn_proto.parameters;
@@ -178,17 +170,16 @@ static AstNode* parse_fn_proto(ParserContext* context) {
         list_push(AstNode*, param_list, &pattern);
 
         if (current_token(context)->type == TokenType_Comma) {
-            context->token_index += 1;
+            consume_token(context);
         }
     }
 
-    token_expect(context, TokenType_RParen); 
-    context->token_index += 1;
+    expect_token(context, TokenType_RParen); 
 
     // return statement
     AstNode* return_type;
     if (current_token(context)->type == TokenType_Arrow) {
-        context->token_index += 1;
+        consume_token(context);
         return_type = parse_type_name(context);
     } else {
         return_type = node_new(AstNodeType_TypeName);
@@ -213,13 +204,11 @@ static AstNode* parse_fn(ParserContext* context) {
 static AstNode* parse_extern_fn(ParserContext* context) {
     AstNode* extern_fn = node_new(AstNodeType_ExternFn);
 
-    token_expect(context, TokenType_KeywordExtern);
-    context->token_index += 1;
+    expect_token(context, TokenType_KeywordExtern);
 
     extern_fn->data.extern_fn.prototype = parse_fn_proto(context);
 
-    token_expect(context, TokenType_Semicolon);
-    context->token_index += 1;
+    expect_token(context, TokenType_Semicolon);
 
     return extern_fn;
 }
@@ -312,10 +301,10 @@ void parser_print_ast(AstNode *node) {
             printf("\t\treturn statement: \n");
             parser_print_ast(node->data.statement_return.expression);
             break;
-        case AstNodeType_ExpressionFunction:
-            printf("\t\tfunction call\n");
+        case AstNodeType_PrimaryExpression:
+            printf("\t\tprimary expression\n");
             break;
-        case AstNodeType_InfixOperator:
+        case AstNodeType_BinaryOperator:
             printf(">\tInfix operator:\n");
             break;
             

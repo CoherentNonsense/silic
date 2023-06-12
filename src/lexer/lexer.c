@@ -9,6 +9,28 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define WHITESPACE \
+    ' ': \
+    case '\t': \
+    case '\n': \
+    case '\f': \
+    case '\r': \
+    case 0xb
+
+#define DIGIT \
+    '0': case '1': case '2': case '3': case '4': \
+    case '5': case '6': case '7': case '8': case '9'
+
+#define ALPHA \
+    'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': \
+    case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n': \
+    case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u': \
+    case 'v': case 'w': case 'x': case 'y': case 'z': case 'A': case 'B': \
+    case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': \
+    case 'J': case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': \
+    case 'Q': case 'R': case 'S': case 'T': case 'U': case 'V': case 'W': \
+    case 'X': case 'Y': case 'Z'
+
 typedef enum LexerState {
     TokenizerState_Start,
     TokenizerState_Symbol,
@@ -26,86 +48,15 @@ typedef struct LexerContext{
     TokenizerState state;
     TextPosition position;
     Token* current_token;
-    List* token_list;
+    List token_list;
 } TokenizerContext;
 
-
-#define WHITESPACE \
-    ' ': \
-    case '\t': \
-    case '\n': \
-    case '\f': \
-    case '\r': \
-    case 0xb
-
-#define DIGIT \
-    '0': \
-    case '1': \
-    case '2': \
-    case '3': \
-    case '4': \
-    case '5': \
-    case '6': \
-    case '7': \
-    case '8': \
-    case '9'
-
-#define ALPHA \
-    'a': \
-    case 'b': \
-    case 'c': \
-    case 'd': \
-    case 'e': \
-    case 'f': \
-    case 'g': \
-    case 'h': \
-    case 'i': \
-    case 'j': \
-    case 'k': \
-    case 'l': \
-    case 'm': \
-    case 'n': \
-    case 'o': \
-    case 'p': \
-    case 'q': \
-    case 'r': \
-    case 's': \
-    case 't': \
-    case 'u': \
-    case 'v': \
-    case 'w': \
-    case 'x': \
-    case 'y': \
-    case 'z': \
-    case 'A': \
-    case 'B': \
-    case 'C': \
-    case 'D': \
-    case 'E': \
-    case 'F': \
-    case 'G': \
-    case 'H': \
-    case 'I': \
-    case 'J': \
-    case 'K': \
-    case 'L': \
-    case 'M': \
-    case 'N': \
-    case 'O': \
-    case 'P': \
-    case 'Q': \
-    case 'R': \
-    case 'S': \
-    case 'T': \
-    case 'U': \
-    case 'V': \
-    case 'W': \
-    case 'X': \
-    case 'Y': \
-    case 'Z'
+static char get_char(TokenizerContext* context, unsigned int offset) {
+    return *(context->source.data + offset);
+}
 
 static void begin_token(TokenizerContext* context, TokenType type) {
-    context->current_token = list_add(Token, context->token_list);
+    context->current_token = list_add(Token, &context->token_list);
 
     Token* token = context->current_token;
     token->type = type;
@@ -138,13 +89,13 @@ static void end_token(TokenizerContext* context) {
     }
 }
 
-List* tokenize(String source) {
+List tokenize(String source) {
     TokenizerContext context = {0};
     context.source = source;
-    context.token_list = calloc(1, sizeof(List));
+    context.position = (TextPosition) { 1, 1 };
 
     for (context.offset = 0; context.offset < source.length; context.offset++) {
-        char current_char = *(source.data + context.offset);
+        char current_char = get_char(&context, context.offset);
 
         switch (context.state) {
 
@@ -306,8 +257,9 @@ List* tokenize(String source) {
                 break;
 
             case TokenizerState_MultilineComment:
-                if (current_char == '*' && *(context.source.data + context.offset + 1) == '/') {
+                if (current_char == '*' && get_char(&context, context.offset + 1) == '/') {
                     context.offset += 1;
+                    context.position.column += 1;
                     context.state = TokenizerState_Start;
                 }
                 break;
@@ -318,7 +270,7 @@ List* tokenize(String source) {
 
         if (current_char == '\n') {
             context.position.line += 1;
-            context.position.column = 0;
+            context.position.column = 1;
         } else {
             context.position.column += 1;
         }
