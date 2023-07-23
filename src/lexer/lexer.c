@@ -1,13 +1,7 @@
 #include "lexer.h"
 
-#include "codegen/codegen.h"
-#include "list.h"
-#include "string_buffer.h"
+#include "token.h"
 #include "util.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define WHITESPACE \
     ' ': \
@@ -85,6 +79,8 @@ static void end_token(TokenizerContext* context) {
             token->type = TokenType_KeywordTrue;
         } else if (token_symbol_compare(context->source, token, "false")) {
             token->type = TokenType_KeywordFalse;
+        } else if (token_symbol_compare(context->source, token, "struct")) {
+            token->type = TokenType_KeywordStruct;
         }
     }
 }
@@ -101,9 +97,7 @@ List tokenize(String source) {
 
             case TokenizerState_Start:
                 switch (current_char) {
-
-                    case WHITESPACE:
-                        break;
+                    case WHITESPACE: break;
                     case ALPHA:
                     case '_':
                         begin_token(&context, TokenType_Symbol);
@@ -281,34 +275,4 @@ List tokenize(String source) {
     end_token(&context);
 
     return context.token_list;
-}
-
-int token_symbol_compare(String source, Token* token, char* symbol) {
-    return !strncmp(source.data + token->start, symbol, token->end - token->start);
-}
-
-char* token_string(TokenType type) {
-    switch (type) {
-        case TokenType_Eof: return "EOF"; break;
-        case TokenType_Symbol: return "Symbol"; break;
-        case TokenType_NumberLiteral: return "Number Literal"; break;
-        case TokenType_StringLiteral: return "String Literal"; break;
-        case TokenType_LBrace: return "Left Brace"; break;
-        case TokenType_RBrace: return "Right Brace"; break;
-        case TokenType_LParen: return "Left Parenthesis"; break;
-        case TokenType_RParen: return "Right Parenthesis"; break;
-        case TokenType_Colon: return "Colon"; break;
-        case TokenType_Semicolon: return "SemiColon"; break;
-        case TokenType_Comma: return "Comma"; break;
-        case TokenType_Ampersand: return "Ampersand"; break;
-        case TokenType_Arrow: return "Arrow"; break;
-        case TokenType_Equals: return "Equals"; break;
-        case TokenType_Plus: return "Plus"; break;
-        case TokenType_Dash: return "Dash"; break;
-        case TokenType_KeywordLet: return "Keyword(let)"; break;
-        case TokenType_KeywordFn: return "Keyword(fn)"; break;
-        case TokenType_KeywordReturn: return "Keyword(return)"; break;
-        case TokenType_KeywordExtern: return "Keyword(extern)"; break;
-        default: return "Unknown"; break;
-    }
 }

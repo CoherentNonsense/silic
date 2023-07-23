@@ -25,7 +25,4 @@ void* list_get_generic(size_t data_size, List* list, size_t index);
 
 size_t list_length(List* list);
 
-
-
-
 #endif // !LIST_H

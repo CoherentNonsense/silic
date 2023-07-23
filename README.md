@@ -28,7 +28,7 @@ const Person = struct {
     pub age: i32,
     pub country: Country,
 
-    pub new: fn (age: i32, country: Country) -> Self {
+    pub new: fn(age: i32, country: Country) -> Self {
         Self { age, country }
     }
 };
@@ -38,13 +38,13 @@ const Person = struct {
 ```
 const stm32 = import("stm32-hal");
 
-const wait = fn () -> {
+const wait = fn() {
     for i in [0..2000000] volatile {
         asm nop;
     }
 };
 
-const main = fn () -> ! { 
+const main = fn() -> ! { 
   stm32.enable_port_clock(stm32.PORT_C);
   stm32.configure_port(stm32.PORT_C, stm32.PUSH_PULL);
 

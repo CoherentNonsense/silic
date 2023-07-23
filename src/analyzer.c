@@ -1,8 +1,6 @@
-#include "analyze.h"
+#include "analyzer.h"
 
-#include "codegen.h"
-#include "list.h"
-#include "hashmap.h"
+#include "util.h"
 #include <stdio.h>
 
 static void analyze_function(CodegenContext* context, AstNode* fn) {
@@ -17,7 +15,7 @@ static void analyze_function(CodegenContext* context, AstNode* fn) {
 }
 
 
-void codegen_analyze(CodegenContext *context, AstNode *root) {
+void analyzer_decl(CodegenContext *context, AstNode *root) {
     List* function_list = &root->data.root.function_list;
     for (int i = 0; i < function_list->length; i++) {
         AstNode* item = *list_get(AstNode*, function_list, i);

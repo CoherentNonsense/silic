@@ -1,8 +1,10 @@
 #include "codegen.h"
 
+#include "ast.h"
 #include "codegen/analyze.h"
+#include "codegen/environment.h"
+#include "hashmap.h"
 #include "list.h"
-#include "parser/expression.h"
 #include "parser/parser.h"
 #include "string_buffer.h"
 #include "util.h"
@@ -11,7 +13,6 @@
 #include "llvm-c/Types.h"
 #include <stdio.h>
 #include <stdlib.h>
-
 
 static LLVMTypeRef to_llvm_type(AstNode* type_name) {
     if (type_name->data.type_name.type == AstNodeTypeNameType_Pointer) {
@@ -51,7 +52,6 @@ static LLVMValueRef codegen_fn_call(CodegenContext* context, AstNode* fn_call) {
         parameters[i] = codegen_expression(context, *list_get(AstNode*, parameter_list, i));
     }
 
-
     LLVMValueRef call_ref = LLVMBuildCall2(
         context->builder,
         fn_proto->data.fn_proto.llvm_fn_type,
@@ -72,6 +72,7 @@ static LLVMValueRef codegen_primary_expression(CodegenContext* context, AstNode*
             String number_text = primary->data.primary_expression.number;
             return LLVMConstIntOfStringAndSize(LLVMInt32Type(), number_text.data, number_text.length, 10);
         }
+
         case PrimaryExpressionType_String: {
             String string_text = primary->data.primary_expression.string;
             LLVMValueRef string_global = LLVMBuildGlobalString(context->builder, string_text.data, "");
@@ -83,8 +84,19 @@ static LLVMValueRef codegen_primary_expression(CodegenContext* context, AstNode*
             );
         }
 
-        case PrimaryExpressionType_Symbol:
+        case PrimaryExpressionType_Symbol: {
+            Binding* binding = env_get_binding(context->current_env, primary->data.primary_expression.symbol);
+            return LLVMBuildLoad2(
+                context->builder,
+                to_llvm_type(binding->type),
+                binding->ptr,
+                ""
+            );
+        }
+
+        case PrimaryExpressionType_FunctionCall:
             return codegen_fn_call(context, primary);
+
         default:
             sil_panic("Code Gen Error: Unhandled primary expression");
     }
@@ -146,17 +158,44 @@ static void codegen_statement(CodegenContext* context, AstNode* statement) {
         case AstNodeType_StatementExpression:
             codegen_expression(context, statement->data.statement_expression.expression);
             break;
+        case AstNodeType_LetStatement: {
+            AstNodeLetStatement* let_statement = &statement->data.let_statement;
+            LLVMValueRef ptr = LLVMBuildAlloca(
+                context->builder,
+                to_llvm_type(let_statement->pattern->data.pattern.type),
+                let_statement->pattern->data.pattern.name.data
+            );
+            LLVMBuildStore(
+                context->builder,
+                codegen_expression(context, let_statement->expression),
+                ptr
+            );
+            // TODO: Move this to analyzer?
+            env_add_binding(
+                context->current_env,
+                let_statement->pattern->data.pattern.name,
+                let_statement->pattern->data.pattern.type,
+                ptr
+            );
+            break;
+        }
         default:
-            sil_panic("Code Gen Error: Expected statement");
+            sil_panic("Code Gen Error: Expected statement %d", statement->type);
     }
 }
 
 static void codegen_block(CodegenContext* context, AstNode* block) {
+    Environment* block_env = env_new(context->current_env);
+    context->current_env = block_env;
+
     List* statement_list = &block->data.block.statement_list;
     for (int i = 0; i < statement_list->length; i++) {
         AstNode* statement = *list_get(AstNode*, statement_list, i);
         codegen_statement(context, statement);
     }
+
+    context->current_env = block_env->parent;
+    env_delete(block_env);
 }
 
 static LLVMValueRef codegen_fn_proto(CodegenContext* context, AstNode* fn_proto) {
@@ -198,12 +237,7 @@ static void codegen_fn(CodegenContext* context, AstNode* fn) {
 }
 
 static void codegen_root(CodegenContext* context) {
-    for (int i = 0; i < context->function_map.entries.capacity; i++) {
-        Entry* entry = list_get(Entry, &context->function_map.entries, i);
-        if (!entry->used) {
-            continue;
-        }
-
+    map_iterate(context->function_map, entry, {
         AstNode* node = entry->value;
         switch (node->type) {
             case AstNodeType_ExternFn:
@@ -214,10 +248,8 @@ static void codegen_root(CodegenContext* context) {
                 break;
             default:
                 sil_panic("Code Gen Error: Unexpected Node in root");
-            
-        }    
-    }
-    
+        }
+    })
 }
 
 void codegen_generate(AstNode* ast) {
@@ -229,7 +261,12 @@ void codegen_generate(AstNode* ast) {
 
     codegen_analyze(&context, ast);
 
+    Environment* global_env = env_new(NULL);
+    context.current_env = global_env;
+
     codegen_root(&context);
+
+    env_delete(global_env);
 
     LLVMDumpModule(context.module);
     // LLVMPrintModuleToFile(context.module, "hello.ll", NULL);

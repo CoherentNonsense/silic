@@ -114,10 +114,10 @@ int main(int argc, char** argv) {
     }
 
     printf("\nParsing Tokens...\n");
-    AstNode* ast_root = parse(source, &token_list);
+    AstNode* ast_root = parse(source, token_list);
     free(buffer);
 
-    parser_print_ast(ast_root);
+    ast_print(ast_root);
 
     printf("\nGenerating Code...\n");
     codegen_generate(ast_root);

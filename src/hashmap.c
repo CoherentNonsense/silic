@@ -1,11 +1,7 @@
 #include "hashmap.h"
-#include "list.h"
-#include "string_buffer.h"
+
 #include "util.h"
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 static size_t hash_function(String string) {
     // FNV 32-bit hash
@@ -58,7 +54,7 @@ void* map_get(HashMap* map, String key) {
     for (int i = 0; i < map->entries.capacity; i++) {
         size_t index = (start_index + i) % map->entries.capacity;
         Entry* entry = list_get(Entry, &map->entries, index);
-        if (string_compare(key, entry->key)) {
+        if (entry->used && string_compare(key, entry->key)) {
             return entry->value;
         }
     }
