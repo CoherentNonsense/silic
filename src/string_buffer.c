@@ -1,6 +1,7 @@
 #include "string_buffer.h"
 
-#include "lexer/lexer.h"
+#include "token.h"
+
 #include <stdlib.h>
 #include <string.h>
 

@@ -1,22 +1,19 @@
-#include "hashmap.h"
+#include "token.h"
+#include "lexer.h"
+#include "parser.h"
 #include "string.h"
-#include "lexer/lexer.h"
-#include "codegen/codegen.h"
-#include "parser/parser.h"
 #include "list.h"
+#include "hashmap.h"
 #include "util.h"
-#include "llvm-c/Types.h"
 
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <llvm-c/Core.h>
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 0
 #define VERSION_PATCH 0
-
 
 static Result read_file(const char* path, char** buffer, int* length) {
     FILE* file = fopen(path, "rb");
@@ -100,12 +97,13 @@ int main(int argc, char** argv) {
 
     String source = string_from_buffer(buffer, length);
 
-    printf("Lexing File...\n");
-    List token_list = tokenize(source);
 
-    for (int i =  0; i < list_length(&token_list); i++) {
-        Token* token = list_get(Token, &token_list, i);
-        printf("%s: ", token_string(token->type));
+    printf("Lexing File...\n");
+    List token_list = lexer_lex(source);
+
+    for (int i =  0; i < token_list.length; i++) {
+        Token* token = list_get(sizeof(Token), &token_list, i);
+        printf("%s: ", token_string(token->kind));
         size_t token_length = token->end - token->start;
         for (int j = 0; j < token_length; j++) {
             printf("%c", buffer[token->start + j]);
@@ -114,14 +112,12 @@ int main(int argc, char** argv) {
     }
 
     printf("\nParsing Tokens...\n");
-    AstNode* ast_root = parse(source, token_list);
+    AstRoot* ast_root = parser_parse(source, token_list);
     free(buffer);
 
-    ast_print(ast_root);
+    //ast_print(ast_root);
 
-    printf("\nGenerating Code...\n");
-    codegen_generate(ast_root);
-    list_delete(&token_list);
+    list_deinit(&token_list);
 
     return EXIT_SUCCESS;
 }

@@ -26,156 +26,166 @@
     case 'X': case 'Y': case 'Z'
 
 typedef enum LexerState {
-    TokenizerState_Start,
-    TokenizerState_Symbol,
-    TokenizerState_Number,
-    TokenizerState_String,
-    TokenizerState_Dash,
-    TokenizerState_Slash,
-    TokenizerState_Comment,
-    TokenizerState_MultilineComment,
-} TokenizerState;
+    LexerState_Start,
+    LexerState_Symbol,
+    LexerState_Number,
+    LexerState_String,
+    LexerState_Dash,
+    LexerState_Slash,
+    LexerState_Comment,
+    LexerState_MultilineComment,
+} LexerState;
 
-typedef struct LexerContext{
+typedef struct LexerContext {
     String source;
     unsigned int offset;
-    TokenizerState state;
+    LexerState state;
     TextPosition position;
     Token* current_token;
     List token_list;
-} TokenizerContext;
+} LexerContext;
 
-static char get_char(TokenizerContext* context, unsigned int offset) {
+static LexerContext init_context(String source) {
+    LexerContext context;
+    context.source = source;
+    context.offset = 0;
+    context.state = LexerState_Start;
+    context.position = (TextPosition){ 1, 1 };
+    context.current_token = 0;
+    context.token_list = list_init();
+
+    return context;
+}
+
+static char get_char(LexerContext* context, unsigned int offset) {
     return *(context->source.data + offset);
 }
 
-static void begin_token(TokenizerContext* context, TokenType type) {
-    context->current_token = list_add(Token, &context->token_list);
+static void begin_token(LexerContext* context, TokenKind kind) {
+    context->current_token = list_add(sizeof(Token), &context->token_list);
 
     Token* token = context->current_token;
-    token->type = type;
+    token->kind = kind;
     token->position = context->position;
     token->start = context->offset;
 }
 
-static void end_token(TokenizerContext* context) {
+static void end_token(LexerContext* context) {
     Token* token = context->current_token;
     token->end = context->offset + 1;
 
-    if (token->type == TokenType_Symbol) {
+    if (token->kind == TokenKind_Symbol) {
         if (token_symbol_compare(context->source, token, "fn")) {
-            token->type = TokenType_KeywordFn;
+            token->kind = TokenKind_KeywordFn;
         } else if (token_symbol_compare(context->source, token, "return")) {
-            token->type = TokenType_KeywordReturn;
+            token->kind = TokenKind_KeywordReturn;
         } else if (token_symbol_compare(context->source, token, "let")) {
-            token->type = TokenType_KeywordLet;
+            token->kind = TokenKind_KeywordLet;
         } else if (token_symbol_compare(context->source, token, "extern")) {
-            token->type = TokenType_KeywordExtern;
+            token->kind = TokenKind_KeywordExtern;
         } else if (token_symbol_compare(context->source, token, "if")) {
-            token->type = TokenType_KeywordIf;
+            token->kind = TokenKind_KeywordIf;
         } else if (token_symbol_compare(context->source, token, "else")) {
-            token->type = TokenType_KeywordElse;
+            token->kind = TokenKind_KeywordElse;
         } else if (token_symbol_compare(context->source, token, "true")) {
-            token->type = TokenType_KeywordTrue;
+            token->kind = TokenKind_KeywordTrue;
         } else if (token_symbol_compare(context->source, token, "false")) {
-            token->type = TokenType_KeywordFalse;
+            token->kind = TokenKind_KeywordFalse;
         } else if (token_symbol_compare(context->source, token, "struct")) {
-            token->type = TokenType_KeywordStruct;
+            token->kind = TokenKind_KeywordStruct;
         }
     }
 }
 
-List tokenize(String source) {
-    TokenizerContext context = {0};
-    context.source = source;
-    context.position = (TextPosition) { 1, 1 };
+List lexer_lex(String source) {
+    LexerContext context = init_context(source);
 
     for (context.offset = 0; context.offset < source.length; context.offset++) {
         char current_char = get_char(&context, context.offset);
 
         switch (context.state) {
 
-            case TokenizerState_Start:
+            case LexerState_Start:
                 switch (current_char) {
                     case WHITESPACE: break;
                     case ALPHA:
                     case '_':
-                        begin_token(&context, TokenType_Symbol);
-                        context.state = TokenizerState_Symbol;
+                        begin_token(&context, TokenKind_Symbol);
+                        context.state = LexerState_Symbol;
                         break;
                     case DIGIT:
-                        begin_token(&context, TokenType_NumberLiteral);
-                        context.state = TokenizerState_Number;
+                        begin_token(&context, TokenKind_NumberLiteral);
+                        context.state = LexerState_Number;
                         break;
                     case '"':
-                        begin_token(&context, TokenType_StringLiteral);
-                        context.state = TokenizerState_String;
+                        begin_token(&context, TokenKind_StringLiteral);
+                        context.state = LexerState_String;
                         break;
                     case ';':
-                        begin_token(&context, TokenType_Semicolon);
+                        begin_token(&context, TokenKind_Semicolon);
                         end_token(&context);
                         break;
                     case ':':
-                        begin_token(&context, TokenType_Colon);
+                        begin_token(&context, TokenKind_Colon);
                         end_token(&context);
                         break;
                     case ',':
-                        begin_token(&context, TokenType_Comma);
+                        begin_token(&context, TokenKind_Comma);
                         end_token(&context);
                         break;
                     case '&':
-                        begin_token(&context, TokenType_Ampersand);
+                        begin_token(&context, TokenKind_Ampersand);
                         end_token(&context);
                         break;
                     case '*':
-                        begin_token(&context, TokenType_Star);
+                        begin_token(&context, TokenKind_Star);
                         end_token(&context);
                         break;
                     case '{':
-                        begin_token(&context, TokenType_LBrace);
+                        begin_token(&context, TokenKind_LBrace);
                         end_token(&context);
                         break;
                     case '}':
-                        begin_token(&context, TokenType_RBrace);
+                        begin_token(&context, TokenKind_RBrace);
                         end_token(&context);
                         break;
                     case '(':
-                        begin_token(&context, TokenType_LParen);
+                        begin_token(&context, TokenKind_LParen);
                         end_token(&context);
                         break;
                     case ')':
-                        begin_token(&context, TokenType_RParen);
+                        begin_token(&context, TokenKind_RParen);
                         end_token(&context);
                         break;
                     case '~':
-                        begin_token(&context, TokenType_Tilde);
+                        begin_token(&context, TokenKind_Tilde);
                         end_token(&context);
                         break;
                     case '!':
-                        begin_token(&context, TokenType_Bang);
+                        begin_token(&context, TokenKind_Bang);
                         end_token(&context);
                         break;
                     case '=':
-                        begin_token(&context, TokenType_Equals);
+                        begin_token(&context, TokenKind_Equals);
                         end_token(&context);
                         break;
                     case '+':
-                        begin_token(&context, TokenType_Plus);
+                        begin_token(&context, TokenKind_Plus);
                         end_token(&context);
                         break;
                     case '-':
-                        begin_token(&context, TokenType_Dash);
-                        context.state = TokenizerState_Dash;
+                        begin_token(&context, TokenKind_Dash);
+                        context.state = LexerState_Dash;
                         break;
                     case '/':
-                        context.state = TokenizerState_Slash;
+                        context.state = LexerState_Slash;
                         break;
                     default:
                         sil_panic("Unknown character: %c", current_char);
                 }
                 break;
 
-            case TokenizerState_Symbol:
+            case LexerState_Symbol:
                 switch (current_char) {
                     case ALPHA:
                     case DIGIT:
@@ -185,12 +195,12 @@ List tokenize(String source) {
                         context.offset -= 1;
                         context.position.column -= 1;
                         end_token(&context);
-                        context.state = TokenizerState_Start;
+                        context.state = LexerState_Start;
                         break;
                 }
                 break;
 
-            case TokenizerState_Number:
+            case LexerState_Number:
                 switch (current_char) {
                     case DIGIT:
                         break;
@@ -198,63 +208,63 @@ List tokenize(String source) {
                         context.offset -= 1;
                         context.position.column -= 1;
                         end_token(&context);
-                        context.state = TokenizerState_Start;
+                        context.state = LexerState_Start;
                         break;
                 }
                 break;
 
-            case TokenizerState_String:
+            case LexerState_String:
                 switch (current_char) {
                     case '"':
                         end_token(&context);
-                        context.state = TokenizerState_Start;
+                        context.state = LexerState_Start;
                         break;
                     default: break;
                 }
                 break;
 
-            case TokenizerState_Dash:
+            case LexerState_Dash:
                 switch (current_char) {
                     case '>':
-                        context.current_token->type = TokenType_Arrow;
+                        context.current_token->kind = TokenKind_Arrow;
                         end_token(&context);
-                        context.state = TokenizerState_Start;
+                        context.state = LexerState_Start;
                         break;
                     default:
                         context.offset -= 1;
                         context.position.column -= 1;
                         end_token(&context);
-                        context.state = TokenizerState_Start;
+                        context.state = LexerState_Start;
                         break;
                 }
                 break;
 
-            case TokenizerState_Slash:
+            case LexerState_Slash:
                 if (current_char == '*') {
-                    context.state = TokenizerState_MultilineComment;
+                    context.state = LexerState_MultilineComment;
                 } else if (current_char == '/') {
-                    context.state = TokenizerState_Comment;
+                    context.state = LexerState_Comment;
                 } else {
                     context.offset -= 1;
                     context.position.column -= 1;
-                    begin_token(&context, TokenType_Slash);
+                    begin_token(&context, TokenKind_Slash);
                     end_token(&context);
-                    context.state = TokenizerState_Start;
+                    context.state = LexerState_Start;
                 }
 
                 break;
 
-            case TokenizerState_Comment:
+            case LexerState_Comment:
                 if (current_char == '\n') {
-                    context.state = TokenizerState_Start;
+                    context.state = LexerState_Start;
                 }
                 break;
 
-            case TokenizerState_MultilineComment:
+            case LexerState_MultilineComment:
                 if (current_char == '*' && get_char(&context, context.offset + 1) == '/') {
                     context.offset += 1;
                     context.position.column += 1;
-                    context.state = TokenizerState_Start;
+                    context.state = LexerState_Start;
                 }
                 break;
 
@@ -271,7 +281,7 @@ List tokenize(String source) {
     }
 
     // end of file
-    begin_token(&context, TokenType_Eof);
+    begin_token(&context, TokenKind_Eof);
     end_token(&context);
 
     return context.token_list;

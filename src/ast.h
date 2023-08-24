@@ -1,26 +1,130 @@
 #ifndef AST_H
+#define AST_H
 
-typedef enum AstNodeKind {
-    AstNodeKind_Root,
-    AstNodeKind_Type,
-    AstNodeKind_Pattern,
-    AstNodeKind_FnProto,
-    AstNodeKind_Fn,
-    AstNodeKind_ExternFn,
-    AstNodeKind_Struct,
-    AstNodeKind_Block,
-    AstNodeKind_Statement,
-    AstNodeKind_Expression,
-    AstNodeKind_UnaryOperator,
-    AstNodeKind_BinaryOperator,
-} AstNodeKind;
+#include "list.h"
+#include "string_buffer.h"
+#include <stdbool.h>
 
-typedef struct AstNode {
-    AstNodeKind kind;
-} AstNode;
+// ---- //
+// Type //
+// ---- //
+typedef enum TypeKind {
+    TypeKind_Ptr,
+    TypeKind_U8,
+    TypeKind_I32,
+    TypeKind_CustomType,
+} TypeKind;
 
-AstNode* ast_make(AstNodeKind kind);
+typedef struct Type Type;
+typedef struct Ptr {
+    Type* to;
+} Ptr;
 
-void ast_debug(AstNode* root);
+typedef struct Type {
+    TypeKind kind;
+    bool is_mut;
+    union {
+	Ptr ptr;
+    };
+} Type;
+
+
+// ---------- //
+// Expression //
+// ---------- //
+typedef enum ExprKind {
+    ExprKind_StringLit,
+    ExprKind_NumberLit,
+    ExprKind_If,
+    ExprKind_Block,
+    ExprKind_UnOp,
+    ExprKind_BinOp,
+} ExprKind;
+
+typedef struct StringLit {
+    String literal;
+} StringLit;
+
+typedef struct Block {
+    List statements;
+} Block;
+
+typedef enum BinOpKind {
+    BinOpKind_Add,
+    BinOpKind_Sub,
+    BinOpKind_Mul,
+    BinOpKind_Div,
+} BinOpKind;
+
+typedef struct BinOp {
+    BinOpKind kind;
+    ExprKind left;
+    ExprKind right;
+} BinOp;
+
+typedef struct Expr {
+    ExprKind kind;
+    union {
+	StringLit string_literal;
+	Block body;
+	BinOp binary_operator;
+    };
+} Expr;
+
+
+// --------- //
+// Statement //
+// --------- //
+typedef enum StmtKind {
+    StmtKind_Expr,
+    StmtKind_If,
+} StmtKind;
+
+typedef struct ExprStmt {
+    Expr* expression;
+} ExprStmt;
+
+typedef struct IfStmt {
+} IfStmt;
+
+typedef struct Stmt {
+    StmtKind kind;
+    union {
+	ExprStmt expression_statement;
+    };
+} Stmt;
+
+
+// ---- //
+// Item //
+// ---- //
+typedef enum ItemKind {
+    ItemKind_FnDecl,
+} ItemKind;
+
+typedef struct FnParam {
+    String name;
+    Type* type;
+} FnParam;
+
+typedef struct FnDecl {
+    List parameters;
+    Type* return_type;
+    Block* body;
+} FnDecl;
+
+typedef struct Item {
+    ItemKind kind;
+    String name;
+    union {
+	FnDecl fn_declaration;
+    };
+} Item;
+
+typedef struct AstRoot {
+    List items;
+} AstRoot;
+
+void ast_debug(AstRoot* root);
 
 #endif // !AST_H

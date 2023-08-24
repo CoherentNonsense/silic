@@ -3,43 +3,43 @@
 
 #include "string_buffer.h"
 
-typedef enum TokenType {
-    TokenType_Eof,
+typedef enum TokenKind {
+    TokenKind_Eof,
 
-    TokenType_Symbol,
-    TokenType_NumberLiteral,
-    TokenType_StringLiteral,
+    TokenKind_Symbol,
+    TokenKind_NumberLiteral,
+    TokenKind_StringLiteral,
 
-    TokenType_LBrace,
-    TokenType_RBrace,
+    TokenKind_LBrace,
+    TokenKind_RBrace,
 
-    TokenType_LParen,
-    TokenType_RParen,
+    TokenKind_LParen,
+    TokenKind_RParen,
     
-    TokenType_Colon,
-    TokenType_Semicolon,
-    TokenType_Comma,
-    TokenType_Ampersand,
-    TokenType_Arrow,
-    TokenType_Star,
-    TokenType_Slash,
-    TokenType_Tilde,
-    TokenType_Bang,
+    TokenKind_Colon,
+    TokenKind_Semicolon,
+    TokenKind_Comma,
+    TokenKind_Ampersand,
+    TokenKind_Arrow,
+    TokenKind_Star,
+    TokenKind_Slash,
+    TokenKind_Tilde,
+    TokenKind_Bang,
 
-    TokenType_Equals,
-    TokenType_Plus,
-    TokenType_Dash,
+    TokenKind_Equals,
+    TokenKind_Plus,
+    TokenKind_Dash,
 
-    TokenType_KeywordLet,
-    TokenType_KeywordFn,
-    TokenType_KeywordReturn,
-    TokenType_KeywordExtern,
-    TokenType_KeywordIf,
-    TokenType_KeywordElse,
-    TokenType_KeywordTrue,
-    TokenType_KeywordFalse,
-    TokenType_KeywordStruct,
-} TokenType;
+    TokenKind_KeywordLet,
+    TokenKind_KeywordFn,
+    TokenKind_KeywordReturn,
+    TokenKind_KeywordExtern,
+    TokenKind_KeywordIf,
+    TokenKind_KeywordElse,
+    TokenKind_KeywordTrue,
+    TokenKind_KeywordFalse,
+    TokenKind_KeywordStruct,
+} TokenKind;
 
 typedef struct TextPosition {
     unsigned int line;
@@ -47,14 +47,14 @@ typedef struct TextPosition {
 } TextPosition;
 
 typedef struct Token {
-    TokenType type;
+    TokenKind kind;
     unsigned int start;
     unsigned int end;
     TextPosition position;
     String text;
 } Token;
 
-char* token_string(TokenType type);
+char* token_string(TokenKind type);
 int token_symbol_compare(String source, Token* token, char* symbol);
 
 #endif

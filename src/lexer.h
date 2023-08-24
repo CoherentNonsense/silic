@@ -4,6 +4,6 @@
 #include "string_buffer.h"
 #include "list.h"
 
-List tokenize(String source);
+List lexer_lex(String source);
 
 #endif // !LEXER_H
