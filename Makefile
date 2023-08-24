@@ -14,4 +14,4 @@ sil_old: $(OFILES)
 	gcc $(OBJECTS) -o $@
 
 clean:
-	-rm ./sil build/*.o build/*/*.o
+	-rm ./sil build/*.o

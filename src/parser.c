@@ -41,36 +41,36 @@ static Stmt* parse_statement(ParserContext* context) {
 }
 
 static Block* parse_block(ParserContext* context) {
-    Block* body = malloc(sizeof(Block));
-    body->statements = list_init();
+    Block* block = malloc(sizeof(Block));
+    block->statements = list_init();
 
     expect_token(context, TokenKind_LBrace);
     
     while (current_token(context)->kind != TokenKind_RBrace) {
-	Stmt* statement = list_add(sizeof(Stmt), &body->statements);
+	Stmt* statement = list_add(sizeof(Stmt), &block->statements);
 	statement = parse_statement(context);
     }
 
     consume_token(context);
 
-    return NULL;
+    return block;
 }
 
-static Item* parse_fn_declaration(ParserContext* context, String* name) {
-    Item* item = malloc(sizeof(Item));
-    item->kind = ItemKind_FnDecl;
+static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
+    FnDecl* fn_declaration = malloc(sizeof(FnDecl));
+    (*item)->kind = ItemKind_FnDecl;
 
     expect_token(context, TokenKind_KeywordFn);
 
     Token* name_token = expect_token(context, TokenKind_Symbol);
-    item->name = string_from_token(context->source.data, name_token);
+    (*item)->name = string_from_token(context->source.data, name_token);
 
     expect_token(context, TokenKind_LParen);
     expect_token(context, TokenKind_RParen);
 
-    item->fn_declaration.body = parse_block(context);
+    fn_declaration->body = parse_block(context);
 
-    return item;
+    return fn_declaration;
 }
 
 static Item* parse_item(ParserContext* context) {
@@ -78,7 +78,7 @@ static Item* parse_item(ParserContext* context) {
 
     switch (current_token(context)->kind) {
 	case TokenKind_KeywordFn: {
-	    item = parse_fn_declaration(context, &item->name);
+	    item->fn_declaration = parse_fn_declaration(context, &item);
 	    break;
 	}
 
@@ -95,7 +95,8 @@ static AstRoot* parse_root(ParserContext* context) {
     root->items = list_init();
 
     while (current_token(context)->kind != TokenKind_Eof) {
-	list_push(sizeof(Item), &root->items, parse_item(context));
+	Item* item = parse_item(context);
+	list_push(sizeof(Item*), &root->items, &item);
     }
 
     return root;

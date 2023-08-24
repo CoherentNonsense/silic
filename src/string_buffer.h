@@ -17,5 +17,4 @@ void string_delete(String a);
 int string_compare(const String a, const String b);
 int string_compare_literal(const String a, const char* b);
 
-
 #endif // !STRING_H

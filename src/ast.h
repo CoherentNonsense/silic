@@ -117,7 +117,7 @@ typedef struct Item {
     ItemKind kind;
     String name;
     union {
-	FnDecl fn_declaration;
+	FnDecl* fn_declaration;
     };
 } Item;
 
@@ -125,6 +125,6 @@ typedef struct AstRoot {
     List items;
 } AstRoot;
 
-void ast_debug(AstRoot* root);
+void ast_print(AstRoot* root);
 
 #endif // !AST_H

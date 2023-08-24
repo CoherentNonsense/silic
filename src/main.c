@@ -115,8 +115,8 @@ int main(int argc, char** argv) {
     AstRoot* ast_root = parser_parse(source, token_list);
     free(buffer);
 
-    //ast_print(ast_root);
-
+    ast_print(ast_root);
+    
     list_deinit(&token_list);
 
     return EXIT_SUCCESS;
