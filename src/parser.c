@@ -36,7 +36,50 @@ static Type* parse_type(ParserContext* context) {
     return NULL;
 }
 
+static Expr* parse_expression(ParserContext* context) {
+    Expr* expression = malloc(sizeof(Expr)); 
+
+    switch (current_token(context)->kind) {
+	case TokenKind_KeywordReturn: {
+	    expression->kind = ExprKind_Ret;
+	    consume_token(context);
+
+	    expression->ret = parse_expression(context);
+
+	    break;
+	}
+
+	case TokenKind_NumberLiteral: {
+	    consume_token(context);
+
+	    break;
+	}
+
+	default: {
+	    sil_panic("Expected expression");
+	}
+    }
+
+    return expression;
+}
+
 static Stmt* parse_statement(ParserContext* context) {
+    Stmt* statement = malloc(sizeof(Stmt));
+
+    switch (current_token(context)->kind) {
+	case TokenKind_KeywordReturn: {
+	    statement->kind = StmtKind_Expr;
+	    statement->expression = parse_expression(context);
+
+	    expect_token(context, TokenKind_Semicolon);
+
+	    break;
+	}
+
+	default: {
+	    sil_panic("Expected statement");
+	}
+    }
     return NULL;
 }
 

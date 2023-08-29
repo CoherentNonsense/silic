@@ -9,6 +9,7 @@
 // Type //
 // ---- //
 typedef enum TypeKind {
+    TypeKind_Void,
     TypeKind_Ptr,
     TypeKind_U8,
     TypeKind_I32,
@@ -32,6 +33,7 @@ typedef struct Type {
 // ---------- //
 // Expression //
 // ---------- //
+typedef struct Expr Expr;
 typedef enum ExprKind {
     ExprKind_StringLit,
     ExprKind_NumberLit,
@@ -39,6 +41,8 @@ typedef enum ExprKind {
     ExprKind_Block,
     ExprKind_UnOp,
     ExprKind_BinOp,
+    ExprKind_Let,
+    ExprKind_Ret,
 } ExprKind;
 
 typedef struct StringLit {
@@ -66,8 +70,9 @@ typedef struct Expr {
     ExprKind kind;
     union {
 	StringLit string_literal;
-	Block body;
+	Block block;
 	BinOp binary_operator;
+	Expr* ret;
     };
 } Expr;
 
@@ -77,20 +82,12 @@ typedef struct Expr {
 // --------- //
 typedef enum StmtKind {
     StmtKind_Expr,
-    StmtKind_If,
 } StmtKind;
-
-typedef struct ExprStmt {
-    Expr* expression;
-} ExprStmt;
-
-typedef struct IfStmt {
-} IfStmt;
 
 typedef struct Stmt {
     StmtKind kind;
     union {
-	ExprStmt expression_statement;
+	Expr* expression;
     };
 } Stmt;
 
