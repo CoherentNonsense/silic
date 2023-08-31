@@ -50,7 +50,9 @@ static Expr* parse_expression(ParserContext* context) {
 	}
 
 	case TokenKind_NumberLiteral: {
-	    consume_token(context);
+	    Token* token = consume_token(context);
+	    expression->kind = ExprKind_NumberLit;
+	    expression->number_literal.text = string_copy(token->text);
 
 	    break;
 	}
@@ -80,7 +82,7 @@ static Stmt* parse_statement(ParserContext* context) {
 	    sil_panic("Expected statement");
 	}
     }
-    return NULL;
+    return statement;
 }
 
 static Block* parse_block(ParserContext* context) {
@@ -90,8 +92,8 @@ static Block* parse_block(ParserContext* context) {
     expect_token(context, TokenKind_LBrace);
     
     while (current_token(context)->kind != TokenKind_RBrace) {
-	Stmt* statement = list_add(sizeof(Stmt), &block->statements);
-	statement = parse_statement(context);
+	Stmt** statement = list_add(sizeof(Stmt*), &block->statements);
+	*statement = parse_statement(context);
     }
 
     consume_token(context);

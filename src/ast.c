@@ -1,9 +1,36 @@
 #include "ast.h"
 
+#include "util.h"
 #include <stdio.h>
+
+static void print_expression(Expr* expression) {
+    printf("~Expression~\n");
+    switch (expression->kind) {
+	case ExprKind_Ret: {
+	    printf("type: return\n");
+	    print_expression(expression->ret);
+	    break;
+	}
+	
+	case ExprKind_NumberLit: {
+	    printf("type: number literal\n");
+	    break;
+	}
+
+	default: {
+	    sil_panic("Unhandled AST Print");
+	}
+    }
+}
 
 static void print_statement(Stmt* statement) {
     printf("~Statement~\n");
+    switch (statement->kind) {
+	case StmtKind_Expr: {
+	    print_expression(statement->expression);
+	    break;
+	}
+    }
 }
 
 static void print_block(Block* block) {

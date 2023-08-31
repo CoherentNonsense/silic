@@ -46,8 +46,12 @@ typedef enum ExprKind {
 } ExprKind;
 
 typedef struct StringLit {
-    String literal;
+    String text;
 } StringLit;
+
+typedef struct NumberLit {
+    String text;
+} NumberLit;
 
 typedef struct Block {
     List statements;
@@ -70,6 +74,7 @@ typedef struct Expr {
     ExprKind kind;
     union {
 	StringLit string_literal;
+	NumberLit number_literal;
 	Block block;
 	BinOp binary_operator;
 	Expr* ret;

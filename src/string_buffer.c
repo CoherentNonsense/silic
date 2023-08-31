@@ -25,6 +25,12 @@ String string_from_token(char* buffer, Token* token) {
     );
 }
 
+String string_copy(String a) {
+    char* data = malloc(a.length);
+    strncpy(data, a.data, a.length);
+    return (String){ data, a.length };
+}
+
 void string_delete(String a) {
     free(a.data);
 }
