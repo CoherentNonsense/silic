@@ -75,6 +75,7 @@ static void begin_token(LexerContext* context, TokenKind kind) {
 static void end_token(LexerContext* context) {
     Token* token = context->current_token;
     token->end = context->offset + 1;
+    token->text = string_from_token(context->source.data, token);
 
     if (token->kind == TokenKind_Symbol) {
         if (token_symbol_compare(context->source, token, "fn")) {

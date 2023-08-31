@@ -17,8 +17,22 @@ static void print_expression(Expr* expression) {
 	    break;
 	}
 
+	case ExprKind_BinOp: {
+	    printf("type: binary operator\n");
+	    print_expression(expression->binary_operator.left);
+	    print_expression(expression->binary_operator.right);
+	    break;
+	}
+
+	case ExprKind_Let: {
+	    printf("type: let\n");
+	    printf("name: %s\n", expression->let.name.data);
+	    print_expression(expression->let.value);
+	    break;
+	}
+
 	default: {
-	    sil_panic("Unhandled AST Print");
+	    sil_panic("Unhandled expression %d", expression->kind);
 	}
     }
 }

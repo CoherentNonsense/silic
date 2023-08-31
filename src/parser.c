@@ -23,11 +23,10 @@ static Token* consume_token(ParserContext* context) {
     return token;
 }
 
-// TODO: Turn this into a macro that returns an error node on failure
 static Token* expect_token(ParserContext* context, TokenKind kind) {
     Token* token = consume_token(context);
     if (token->kind != kind) {
-	sil_panic("Unexpected token");
+	sil_panic("Unexpected token: got %s. expected %s", token_string(token->kind), token_string(kind));
     }
 
     return token;
@@ -37,7 +36,24 @@ static Type* parse_type(ParserContext* context) {
     return NULL;
 }
 
-static Expr* parse_expression(ParserContext* context) {
+static Expr* parse_expression(ParserContext* context);
+
+static void operator_precedence(TokenKind operator_kind, int* left, int* right) {
+    int precedence;
+    switch (operator_kind) {
+	case TokenKind_Equals: precedence = OpPrec_Assign; break;
+	case TokenKind_Plus: precedence = OpPrec_Add; break;
+	case TokenKind_Dash: precedence = OpPrec_Sub; break;
+	case TokenKind_Star: precedence = OpPrec_Mul; break;
+	case TokenKind_Slash: precedence = OpPrec_Div; break;
+	default: precedence = OpPrec_Invalid;
+    }
+
+    *left = (precedence * 2) - 1;
+    *right = precedence * 2;
+}
+
+static Expr* parse_primary_expression(ParserContext* context) {
     Expr* expression = malloc(sizeof(Expr)); 
 
     switch (current_token(context)->kind) {
@@ -51,9 +67,25 @@ static Expr* parse_expression(ParserContext* context) {
 	}
 
 	case TokenKind_NumberLiteral: {
-	    Token* token = consume_token(context);
 	    expression->kind = ExprKind_NumberLit;
+
+	    Token* token = consume_token(context);
 	    expression->number_literal.text = string_copy(token->text);
+
+	    break;
+	}
+
+	case TokenKind_KeywordLet: {
+	    expression->kind = ExprKind_Let;
+
+	    consume_token(context);
+
+	    Token* name_token = expect_token(context, TokenKind_Symbol);
+	    expression->let.name = string_copy(name_token->text);
+
+	    expect_token(context, TokenKind_Equals);
+
+	    expression->let.value = parse_expression(context);
 
 	    break;
 	}
@@ -66,21 +98,64 @@ static Expr* parse_expression(ParserContext* context) {
     return expression;
 }
 
+static Expr* parse_expression_prec(ParserContext* context, int precedence) {
+    Expr* left_expression;
+    if (current_token(context)->kind == TokenKind_LParen) {
+	consume_token(context);
+	left_expression = parse_expression(context);
+	expect_token(context, TokenKind_RParen);
+    } else {
+	left_expression = parse_primary_expression(context);
+    }
+
+    while (1) {
+	Token* operator_token = current_token(context);
+	int left, right;
+	operator_precedence(operator_token->kind, &left, &right);
+
+	if (left == -1) { break; }
+
+	if (left < precedence) { break; }
+
+	consume_token(context);
+
+	Expr* right_expression = parse_expression_prec(context, right);
+	Expr* operator = malloc(sizeof(Expr));
+	operator->kind = ExprKind_BinOp;
+
+	switch (operator_token->kind) {
+	    case TokenKind_Equals: operator->binary_operator.kind = BinOpKind_Eq; break;
+	    case TokenKind_Plus: operator->binary_operator.kind = BinOpKind_Add; break;
+	    case TokenKind_Dash: operator->binary_operator.kind = BinOpKind_Sub; break;
+	    case TokenKind_Star: operator->binary_operator.kind = BinOpKind_Mul; break;
+	    case TokenKind_Slash: operator->binary_operator.kind = BinOpKind_Div; break;
+	    default: sil_panic("Unhandled operator");
+	}
+
+	operator->binary_operator.left = left_expression;
+	operator->binary_operator.right = right_expression;
+
+	left_expression = operator;
+    }
+
+    return left_expression;
+}
+
+static Expr* parse_expression(ParserContext* context) {
+    return parse_expression_prec(context, 0);
+}
+
 static Stmt* parse_statement(ParserContext* context) {
     Stmt* statement = malloc(sizeof(Stmt));
 
     switch (current_token(context)->kind) {
-	case TokenKind_KeywordReturn: {
+	default: {
 	    statement->kind = StmtKind_Expr;
 	    statement->expression = parse_expression(context);
 
 	    expect_token(context, TokenKind_Semicolon);
 
 	    break;
-	}
-
-	default: {
-	    sil_panic("Expected statement");
 	}
     }
     return statement;

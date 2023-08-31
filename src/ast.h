@@ -63,6 +63,7 @@ typedef struct Block {
 } Block;
 
 typedef enum BinOpKind {
+    BinOpKind_Eq,
     BinOpKind_Add,
     BinOpKind_Sub,
     BinOpKind_Mul,
@@ -71,9 +72,27 @@ typedef enum BinOpKind {
 
 typedef struct BinOp {
     BinOpKind kind;
-    ExprKind left;
-    ExprKind right;
+    Expr* left;
+    Expr* right;
 } BinOp;
+
+typedef enum OpPrec {
+    OpPrec_Invalid = 0,
+
+    OpPrec_Assign = 1,
+
+    OpPrec_Add = 2,
+    OpPrec_Sub = 2,
+
+    OpPrec_Mul = 3,
+    OpPrec_Div = 3,
+} OpPrec;
+
+typedef struct Let {
+    String name;
+    Type type;
+    Expr* value;
+} Let;
 
 typedef struct Expr {
     ExprKind kind;
@@ -82,6 +101,7 @@ typedef struct Expr {
 	NumberLit number_literal;
 	Block block;
 	BinOp binary_operator;
+	Let let;
 	Expr* ret;
     };
 } Expr;
