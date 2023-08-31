@@ -90,6 +90,25 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    break;
 	}
 
+	case TokenKind_Symbol: {
+	    Token* symbol_token = consume_token(context);
+	    if (current_token(context)->kind != TokenKind_LParen) {
+		expression->kind = ExprKind_Symbol;
+		expression->symbol = string_copy(symbol_token->text);
+
+		break;
+	    }
+
+	    expression->kind = ExprKind_FnCall;
+
+	    expression->fn_call.name = string_copy(symbol_token->text);
+
+	    expect_token(context, TokenKind_LParen);
+	    expect_token(context, TokenKind_RParen);
+
+	    break;
+	}
+
 	default: {
 	    sil_panic("Expected expression");
 	}

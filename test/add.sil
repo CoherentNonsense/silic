@@ -1,4 +1,6 @@
 fn test() {
     let x = 5 + 1;
+    x = 0;
+    print();
     return 42;
 }

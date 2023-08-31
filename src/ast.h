@@ -48,6 +48,8 @@ typedef enum ExprKind {
     ExprKind_BinOp,
     ExprKind_Let,
     ExprKind_Ret,
+    ExprKind_Symbol,
+    ExprKind_FnCall,
 } ExprKind;
 
 typedef struct StringLit {
@@ -94,6 +96,10 @@ typedef struct Let {
     Expr* value;
 } Let;
 
+typedef struct FnCall {
+    String name;
+} FnCall;
+
 typedef struct Expr {
     ExprKind kind;
     union {
@@ -103,6 +109,8 @@ typedef struct Expr {
 	BinOp binary_operator;
 	Let let;
 	Expr* ret;
+	String symbol;
+	FnCall fn_call;
     };
 } Expr;
 

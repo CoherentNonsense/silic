@@ -31,6 +31,18 @@ static void print_expression(Expr* expression) {
 	    break;
 	}
 
+	case ExprKind_Symbol: {
+	    printf("type: symbol\n");
+	    printf("name: %s\n", expression->symbol.data);
+	    break;
+	}
+
+	case ExprKind_FnCall: {
+	    printf("type: fn call\n");
+	    printf("name: %s\n", expression->fn_call.name.data);
+	    break;
+        }
+
 	default: {
 	    sil_panic("Unhandled expression %d", expression->kind);
 	}
