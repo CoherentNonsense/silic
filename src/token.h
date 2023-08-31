@@ -2,6 +2,7 @@
 #define TOKEN_H
 
 #include "string_buffer.h"
+#include "list.h"
 
 typedef enum TokenKind {
     TokenKind_Eof,
@@ -53,6 +54,8 @@ typedef struct Token {
     TextPosition position;
     String text;
 } Token;
+
+REGISTER_LIST(Token);
 
 char* token_string(TokenKind type);
 int token_symbol_compare(String source, Token* token, char* symbol);

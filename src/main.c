@@ -1,3 +1,4 @@
+#include "module.h"
 #include "token.h"
 #include "lexer.h"
 #include "parser.h"
@@ -98,11 +99,12 @@ int main(int argc, char** argv) {
     String source = string_from_buffer(buffer, length);
 
 
+    // ------ //
+    // Lexing //
     printf("Lexing File...\n");
-    List token_list = lexer_lex(source);
+    TokenList token_list = lexer_lex(source);
 
-    for (int i =  0; i < token_list.length; i++) {
-        Token* token = list_get(sizeof(Token), &token_list, i);
+    list_foreach(token_list, token) {
         printf("%s: ", token_string(token->kind));
         size_t token_length = token->end - token->start;
         for (int j = 0; j < token_length; j++) {
@@ -111,13 +113,16 @@ int main(int argc, char** argv) {
         printf("\n");
     }
 
+    
+    // ------- //
+    // Parsing //
     printf("\nParsing Tokens...\n");
-    AstRoot* ast_root = parser_parse(source, token_list);
+    Module module = parser_parse(source, token_list);
     free(buffer);
 
-    ast_print(ast_root);
+    ast_print(module.ast);
     
-    list_deinit(&token_list);
+    list_deinit(token_list);
 
     return EXIT_SUCCESS;
 }

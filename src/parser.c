@@ -1,18 +1,19 @@
 #include "parser.h"
 
 #include "util.h"
+#include "token.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
 typedef struct ParserContext {
     String source;
-    List token_list;
+    TokenList token_list;
     unsigned int token_index;
 } ParserContext;
 
 static Token* current_token(ParserContext* context) {
-    return list_get(sizeof(Token), &context->token_list, context->token_index);
+    return list_get_ref(context->token_list, context->token_index);
 }
 
 static Token* consume_token(ParserContext* context) {
@@ -87,13 +88,13 @@ static Stmt* parse_statement(ParserContext* context) {
 
 static Block* parse_block(ParserContext* context) {
     Block* block = malloc(sizeof(Block));
-    block->statements = list_init();
+    list_init(block->statements);
 
     expect_token(context, TokenKind_LBrace);
     
     while (current_token(context)->kind != TokenKind_RBrace) {
-	Stmt** statement = list_add(sizeof(Stmt*), &block->statements);
-	*statement = parse_statement(context);
+	Stmt* statement = parse_statement(context);
+	list_push(block->statements, statement);
     }
 
     consume_token(context);
@@ -137,21 +138,23 @@ static Item* parse_item(ParserContext* context) {
 
 static AstRoot* parse_root(ParserContext* context) {
     AstRoot* root = malloc(sizeof(AstRoot));
-    root->items = list_init();
+    list_init(root->items);
 
     while (current_token(context)->kind != TokenKind_Eof) {
 	Item* item = parse_item(context);
-	list_push(sizeof(Item*), &root->items, &item);
+	list_push(root->items, item);
     }
 
     return root;
 }
 
-AstRoot* parser_parse(String source, List token_list) {
+Module parser_parse(String source, TokenList token_list) {
     ParserContext context;
     context.source = source;
     context.token_list = token_list;
     context.token_index = 0;
 
-    return parse_root(&context);
+    AstRoot* ast = parse_root(&context);
+
+    return (Module) { ast };
 }

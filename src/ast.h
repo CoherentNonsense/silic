@@ -5,6 +5,12 @@
 #include "string_buffer.h"
 #include <stdbool.h>
 
+typedef struct Expr Expr;
+typedef struct Stmt Stmt;
+
+REGISTER_LIST_PTR(Expr);
+REGISTER_LIST_PTR(Stmt);
+
 // ---- //
 // Type //
 // ---- //
@@ -33,7 +39,6 @@ typedef struct Type {
 // ---------- //
 // Expression //
 // ---------- //
-typedef struct Expr Expr;
 typedef enum ExprKind {
     ExprKind_StringLit,
     ExprKind_NumberLit,
@@ -54,7 +59,7 @@ typedef struct NumberLit {
 } NumberLit;
 
 typedef struct Block {
-    List statements;
+    StmtPtrList statements;
 } Block;
 
 typedef enum BinOpKind {
@@ -108,9 +113,10 @@ typedef struct FnParam {
     String name;
     Type* type;
 } FnParam;
+REGISTER_LIST_PTR(FnParam);
 
 typedef struct FnDecl {
-    List parameters;
+    FnParamPtrList parameters;
     Type* return_type;
     Block* body;
 } FnDecl;
@@ -122,9 +128,10 @@ typedef struct Item {
 	FnDecl* fn_declaration;
     };
 } Item;
+REGISTER_LIST_PTR(Item);
 
 typedef struct AstRoot {
-    List items;
+    ItemPtrList items;
 } AstRoot;
 
 void ast_print(AstRoot* root);

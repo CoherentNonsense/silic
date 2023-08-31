@@ -2,8 +2,8 @@
 #define LEXER_H
 
 #include "string_buffer.h"
-#include "list.h"
+#include "token.h"
 
-List lexer_lex(String source);
+TokenList lexer_lex(String source);
 
 #endif // !LEXER_H

@@ -42,7 +42,7 @@ typedef struct LexerContext {
     LexerState state;
     TextPosition position;
     Token* current_token;
-    List token_list;
+    TokenList token_list;
 } LexerContext;
 
 static LexerContext init_context(String source) {
@@ -52,7 +52,8 @@ static LexerContext init_context(String source) {
     context.state = LexerState_Start;
     context.position = (TextPosition){ 1, 1 };
     context.current_token = 0;
-    context.token_list = list_init();
+    
+    list_init(context.token_list);
 
     return context;
 }
@@ -62,7 +63,8 @@ static char get_char(LexerContext* context, unsigned int offset) {
 }
 
 static void begin_token(LexerContext* context, TokenKind kind) {
-    context->current_token = list_add(sizeof(Token), &context->token_list);
+    list_reserve(context->token_list, 1);
+    context->current_token = list_get_ref(context->token_list, context->token_list.length - 1);
 
     Token* token = context->current_token;
     token->kind = kind;
@@ -97,7 +99,7 @@ static void end_token(LexerContext* context) {
     }
 }
 
-List lexer_lex(String source) {
+TokenList lexer_lex(String source) {
     LexerContext context = init_context(source);
 
     for (context.offset = 0; context.offset < source.length; context.offset++) {

@@ -36,8 +36,8 @@ static void print_statement(Stmt* statement) {
 static void print_block(Block* block) {
     printf("~Block~\n");
     for (int i = 0; i < block->statements.length; i++) {
-	Stmt** statement = list_get(sizeof(Stmt*), &block->statements, i);
-	print_statement(*statement);
+	Stmt* statement = list_get(block->statements, i);
+	print_statement(statement);
     }
 }
 
@@ -64,8 +64,8 @@ void ast_print(AstRoot* root) {
     printf("\n__AST__\n\n");
 
     for (int i = 0; i < root->items.length; i += 1) {
-	Item** item = list_get(sizeof(Item*), &root->items, i);
-	print_item(*item);
+	Item* item = list_get(root->items, i);
+	print_item(item);
     }
 
     printf("\n");

@@ -10,9 +10,10 @@ typedef struct Entry {
     void* value;
     char used;
 } Entry;
+REGISTER_LIST(Entry);
 
 typedef struct HashMap {
-    List entries;
+    EntryList entries;
 } HashMap;
 
 void map_delete(HashMap* map);
