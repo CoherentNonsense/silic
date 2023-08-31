@@ -16,35 +16,17 @@ const main = fn () -> i32 {
 };
 ```
 
-`structs_and_enums.sil`
-```
-const Country = enum {
-    Canada,
-    Japan,
-    Usa,
-};
-
-const Person = struct {
-    pub age: i32,
-    pub country: Country,
-
-    pub new: fn(age: i32, country: Country) -> Self {
-        Self { age, country }
-    }
-};
-```
-
 `blink_led.sil`
 ```
 const stm32 = import("stm32-hal");
 
-const wait = fn() {
+fn wait() {
     for i in [0..2000000] volatile {
         asm nop;
     }
 };
 
-const main = fn() -> ! { 
+fn main() -> ! { 
   stm32.enable_port_clock(stm32.PORT_C);
   stm32.configure_port(stm32.PORT_C, stm32.PUSH_PULL);
 
