@@ -2,7 +2,7 @@ extern fn puts(message: *u8) -> i32;
 extern fn exit(status: i32) -> !;
 
 fn start() -> ! {
-    puts();
+    puts("Hello, world!");
 
-    exit();
+    exit(0);
 }

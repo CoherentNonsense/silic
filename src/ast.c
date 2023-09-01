@@ -62,6 +62,11 @@ static void print_expression(Expr* expression) {
 	    break;
 	}
 
+	case ExprKind_StringLit: {
+	    printf("string literal\n" RESET);
+	    break;
+	}
+
 	case ExprKind_BinOp: {
 	    printf("binop\n" RESET);
 	    print_expression(expression->binary_operator.left);
@@ -91,6 +96,14 @@ static void print_expression(Expr* expression) {
 	    printf("fn call\t" RESET);
 	    printf("name: ");
 	    span_println(expression->fn_call.name);
+	    printf("args: (\n");
+	    for (int i = 0; i < expression->fn_call.arguments.length; i++) {
+		print_expression(list_get(expression->fn_call.arguments, i));
+		if (i < expression->fn_call.arguments.length - 1) {
+		    printf(",\n");
+		}
+	    }
+	    printf(")\n");
 	    break;
         }
 

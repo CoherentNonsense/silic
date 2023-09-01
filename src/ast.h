@@ -106,6 +106,7 @@ typedef struct Let {
 
 typedef struct FnCall {
     Span name;
+    ExprPtrList arguments;
 } FnCall;
 
 typedef struct Expr {

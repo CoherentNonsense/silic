@@ -104,6 +104,13 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    break;
 	}
 
+	case TokenKind_StringLiteral: {
+	    expression->kind = ExprKind_StringLit;
+	    expression->string_literal.span = consume_token(context)->span;
+
+	    break;
+	}
+
 	case TokenKind_KeywordLet: {
 	    expression->kind = ExprKind_Let;
 
@@ -137,6 +144,19 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->fn_call.name = symbol_token->span;
 
 	    expect_token(context, TokenKind_LParen);
+
+	    list_init(expression->fn_call.arguments);
+	    while (current_token(context)->kind != TokenKind_RParen) {
+		Expr* arg = parse_expression(context);
+		list_push(expression->fn_call.arguments, arg);
+
+		if (current_token(context)->kind != TokenKind_Comma) {
+		    break;
+		}
+
+		consume_token(context);
+	    }
+
 	    expect_token(context, TokenKind_RParen);
 
 	    break;
