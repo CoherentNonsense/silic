@@ -3,43 +3,69 @@
 #include "util.h"
 #include <stdio.h>
 
+static void print_type(Type* type) {
+    printf("~Type~\n");
+    switch (type->kind) {
+	case TypeKind_Symbol: {
+	    printf("kind: symbol\n");
+	    printf("name: ");
+	    span_println(type->symbol);
+	    break;
+	}
+
+	case TypeKind_Ptr: {
+	    printf("kind: pointer\n");
+	    print_type(type->ptr.to);
+	    break;
+	}
+	
+	default: {
+	    printf("unhandled type\n");
+	}
+    }
+}
+
 static void print_expression(Expr* expression) {
     printf("~Expression~\n");
     switch (expression->kind) {
 	case ExprKind_Ret: {
-	    printf("type: return\n");
+	    printf("kind: return\n");
 	    print_expression(expression->ret);
 	    break;
 	}
 	
 	case ExprKind_NumberLit: {
-	    printf("type: number literal\n");
+	    printf("kind: number literal\n");
 	    break;
 	}
 
 	case ExprKind_BinOp: {
-	    printf("type: binary operator\n");
+	    printf("kind: binary operator\n");
 	    print_expression(expression->binary_operator.left);
 	    print_expression(expression->binary_operator.right);
 	    break;
 	}
 
 	case ExprKind_Let: {
-	    printf("type: let\n");
-	    printf("name: %s\n", expression->let.name.data);
+	    printf("kind: let\n");
+	    printf("name: ");
+	    span_println(expression->let.name);
+	    print_type(expression->let.type);
 	    print_expression(expression->let.value);
 	    break;
 	}
 
 	case ExprKind_Symbol: {
-	    printf("type: symbol\n");
-	    printf("name: %s\n", expression->symbol.data);
+	    printf("kind: symbol\n");
+	    printf("name: ");
+	    span_println(expression->symbol);
 	    break;
 	}
 
 	case ExprKind_FnCall: {
-	    printf("type: fn call\n");
-	    printf("name: %s\n", expression->fn_call.name.data);
+	    printf("kind: fn call\n");
+	    printf("name: ");
+	    span_println(expression->fn_call.name);
 	    break;
         }
 
@@ -74,7 +100,8 @@ static void print_fn_declaration(FnDecl* fn_declaration) {
 
 static void print_item(Item* item) {
     printf("~Item~\n");
-    printf("name: %s\n", item->name.data);
+    printf("name: ");
+    span_println(item->name);
 
     switch (item->kind) {
 	case ItemKind_FnDecl: {

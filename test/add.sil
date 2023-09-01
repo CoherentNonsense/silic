@@ -1,5 +1,5 @@
 fn test() {
-    let x = 5 + 1;
+    let x: *i32 = 5 + 3 * 2;
     x = 0;
     print();
     return 42;

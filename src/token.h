@@ -1,7 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include "string_buffer.h"
+#include "span.h"
 #include "list.h"
 
 typedef enum TokenKind {
@@ -49,15 +49,14 @@ typedef struct TextPosition {
 
 typedef struct Token {
     TokenKind kind;
-    unsigned int start;
-    unsigned int end;
     TextPosition position;
-    String text;
+    Span span;
 } Token;
 
 REGISTER_LIST(Token);
 
 char* token_string(TokenKind type);
-int token_symbol_compare(String source, Token* token, char* symbol);
+int token_compare_literal(Token* token, char* symbol);
+void token_print(Token* token);
 
 #endif

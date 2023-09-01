@@ -2,11 +2,11 @@
 #define HASHMAP_H
 
 #include "list.h"
-#include "string_buffer.h"
+#include "span.h"
 
 
 typedef struct Entry {
-    String key;
+    Span key;
     void* value;
     char used;
 } Entry;
@@ -17,9 +17,9 @@ typedef struct HashMap {
 } HashMap;
 
 void map_delete(HashMap* map);
-void map_insert(HashMap* map, String key, void* value);
-void* map_get(HashMap* map, String key);
-int map_has(HashMap* map,  String key);
+void map_insert(HashMap* map, Span key, void* value);
+void* map_get(HashMap* map, Span key);
+int map_has(HashMap* map,  Span key);
 
 #define map_iterate(map, entry, cb) for (int i  = 0; i < map.entries.capacity; i++) {\
         Entry* entry = list_get_generic(sizeof(Entry), &map.entries, i);\

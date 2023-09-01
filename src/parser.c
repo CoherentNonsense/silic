@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 typedef struct ParserContext {
-    String source;
+    Span source;
     TokenList token_list;
     unsigned int token_index;
 } ParserContext;
@@ -33,7 +33,22 @@ static Token* expect_token(ParserContext* context, TokenKind kind) {
 }
 
 static Type* parse_type(ParserContext* context) {
-    return NULL;
+    Type* type = malloc(sizeof(Type));
+
+    if (current_token(context)->kind == TokenKind_Star) {
+	consume_token(context);
+	type->kind = TypeKind_Ptr;
+	type->ptr.to = parse_type(context);
+
+	return type;
+    }
+
+    Token* type_token = expect_token(context, TokenKind_Symbol);
+
+    type->kind = TypeKind_Symbol;
+    type->symbol = type_token->span;
+
+    return type;
 }
 
 static Expr* parse_expression(ParserContext* context);
@@ -70,7 +85,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->kind = ExprKind_NumberLit;
 
 	    Token* token = consume_token(context);
-	    expression->number_literal.text = string_copy(token->text);
+	    expression->number_literal.span = token->span;
 
 	    break;
 	}
@@ -81,7 +96,11 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    consume_token(context);
 
 	    Token* name_token = expect_token(context, TokenKind_Symbol);
-	    expression->let.name = string_copy(name_token->text);
+	    expression->let.name = name_token->span;
+
+	    expect_token(context, TokenKind_Colon);
+
+	    expression->let.type = parse_type(context);
 
 	    expect_token(context, TokenKind_Equals);
 
@@ -94,14 +113,14 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    Token* symbol_token = consume_token(context);
 	    if (current_token(context)->kind != TokenKind_LParen) {
 		expression->kind = ExprKind_Symbol;
-		expression->symbol = string_copy(symbol_token->text);
+		expression->symbol = symbol_token->span;
 
 		break;
 	    }
 
 	    expression->kind = ExprKind_FnCall;
 
-	    expression->fn_call.name = string_copy(symbol_token->text);
+	    expression->fn_call.name = symbol_token->span;
 
 	    expect_token(context, TokenKind_LParen);
 	    expect_token(context, TokenKind_RParen);
@@ -203,10 +222,17 @@ static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
     expect_token(context, TokenKind_KeywordFn);
 
     Token* name_token = expect_token(context, TokenKind_Symbol);
-    (*item)->name = string_from_token(context->source.data, name_token);
+    (*item)->name = name_token->span;
 
     expect_token(context, TokenKind_LParen);
     expect_token(context, TokenKind_RParen);
+
+    if (current_token(context)->kind == TokenKind_Arrow) {
+	consume_token(context);
+	fn_declaration->return_type = parse_type(context);
+    } else {
+	fn_declaration->return_type = NULL;
+    }
 
     fn_declaration->body = parse_block(context);
 
@@ -242,7 +268,7 @@ static AstRoot* parse_root(ParserContext* context) {
     return root;
 }
 
-Module parser_parse(String source, TokenList token_list) {
+Module parser_parse(Span source, TokenList token_list) {
     ParserContext context;
     context.source = source;
     context.token_list = token_list;

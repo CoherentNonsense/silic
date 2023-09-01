@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    String source = string_from_buffer(buffer, length);
+    Span source = (Span){ buffer, length };
 
 
     // ------ //
@@ -106,14 +106,11 @@ int main(int argc, char** argv) {
 
     list_foreach(token_list, token) {
         printf("%s: ", token_string(token->kind));
-        size_t token_length = token->end - token->start;
-        for (int j = 0; j < token_length; j++) {
-            printf("%c", buffer[token->start + j]);
-        }
+	token_print(token);
         printf("\n");
     }
 
-    
+
     // ------- //
     // Parsing //
     printf("\nParsing Tokens...\n");

@@ -1,8 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include "span.h"
 #include "list.h"
-#include "string_buffer.h"
 #include <stdbool.h>
 
 typedef struct Expr Expr;
@@ -15,11 +15,9 @@ REGISTER_LIST_PTR(Stmt);
 // Type //
 // ---- //
 typedef enum TypeKind {
-    TypeKind_Void,
+    TypeKind_Symbol,
     TypeKind_Ptr,
-    TypeKind_U8,
-    TypeKind_I32,
-    TypeKind_CustomType,
+    TypeKind_Array,
 } TypeKind;
 
 typedef struct Type Type;
@@ -31,6 +29,7 @@ typedef struct Type {
     TypeKind kind;
     bool is_mut;
     union {
+	Span symbol;
 	Ptr ptr;
     };
 } Type;
@@ -53,11 +52,11 @@ typedef enum ExprKind {
 } ExprKind;
 
 typedef struct StringLit {
-    String text;
+    Span span;
 } StringLit;
 
 typedef struct NumberLit {
-    String text;
+    Span span;
 } NumberLit;
 
 typedef struct Block {
@@ -91,17 +90,18 @@ typedef enum OpPrec {
 } OpPrec;
 
 typedef struct Let {
-    String name;
-    Type type;
+    Span name;
+    Type* type;
     Expr* value;
 } Let;
 
 typedef struct FnCall {
-    String name;
+    Span name;
 } FnCall;
 
 typedef struct Expr {
     ExprKind kind;
+    Type type;
     union {
 	StringLit string_literal;
 	NumberLit number_literal;
@@ -109,7 +109,7 @@ typedef struct Expr {
 	BinOp binary_operator;
 	Let let;
 	Expr* ret;
-	String symbol;
+	Span symbol;
 	FnCall fn_call;
     };
 } Expr;
@@ -138,7 +138,7 @@ typedef enum ItemKind {
 } ItemKind;
 
 typedef struct FnParam {
-    String name;
+    Span name;
     Type* type;
 } FnParam;
 REGISTER_LIST_PTR(FnParam);
@@ -151,7 +151,7 @@ typedef struct FnDecl {
 
 typedef struct Item {
     ItemKind kind;
-    String name;
+    Span name;
     union {
 	FnDecl* fn_declaration;
     };

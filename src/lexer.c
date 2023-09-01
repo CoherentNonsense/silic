@@ -37,15 +37,15 @@ typedef enum LexerState {
 } LexerState;
 
 typedef struct LexerContext {
-    String source;
-    unsigned int offset;
+    Span source;
+    size_t offset;
     LexerState state;
     TextPosition position;
     Token* current_token;
     TokenList token_list;
 } LexerContext;
 
-static LexerContext init_context(String source) {
+static LexerContext init_context(Span source) {
     LexerContext context;
     context.source = source;
     context.offset = 0;
@@ -59,7 +59,7 @@ static LexerContext init_context(String source) {
 }
 
 static char get_char(LexerContext* context, unsigned int offset) {
-    return *(context->source.data + offset);
+    return *(context->source.start + offset);
 }
 
 static void begin_token(LexerContext* context, TokenKind kind) {
@@ -69,38 +69,37 @@ static void begin_token(LexerContext* context, TokenKind kind) {
     Token* token = context->current_token;
     token->kind = kind;
     token->position = context->position;
-    token->start = context->offset;
+    token->span.start = context->source.start + context->offset;
 }
 
 static void end_token(LexerContext* context) {
     Token* token = context->current_token;
-    token->end = context->offset + 1;
-    token->text = string_from_token(context->source.data, token);
+    token->span.length = (context->offset - (size_t)(token->span.start - context->source.start)) + 1;
 
     if (token->kind == TokenKind_Symbol) {
-        if (token_symbol_compare(context->source, token, "fn")) {
+        if (token_compare_literal(token, "fn")) {
             token->kind = TokenKind_KeywordFn;
-        } else if (token_symbol_compare(context->source, token, "return")) {
+        } else if (token_compare_literal(token, "return")) {
             token->kind = TokenKind_KeywordReturn;
-        } else if (token_symbol_compare(context->source, token, "let")) {
+        } else if (token_compare_literal(token, "let")) {
             token->kind = TokenKind_KeywordLet;
-        } else if (token_symbol_compare(context->source, token, "extern")) {
+        } else if (token_compare_literal(token, "extern")) {
             token->kind = TokenKind_KeywordExtern;
-        } else if (token_symbol_compare(context->source, token, "if")) {
+        } else if (token_compare_literal(token, "if")) {
             token->kind = TokenKind_KeywordIf;
-        } else if (token_symbol_compare(context->source, token, "else")) {
+        } else if (token_compare_literal(token, "else")) {
             token->kind = TokenKind_KeywordElse;
-        } else if (token_symbol_compare(context->source, token, "true")) {
+        } else if (token_compare_literal(token, "true")) {
             token->kind = TokenKind_KeywordTrue;
-        } else if (token_symbol_compare(context->source, token, "false")) {
+        } else if (token_compare_literal(token, "false")) {
             token->kind = TokenKind_KeywordFalse;
-        } else if (token_symbol_compare(context->source, token, "struct")) {
+        } else if (token_compare_literal(token, "struct")) {
             token->kind = TokenKind_KeywordStruct;
         }
     }
 }
 
-TokenList lexer_lex(String source) {
+TokenList lexer_lex(Span source) {
     LexerContext context = init_context(source);
 
     for (context.offset = 0; context.offset < source.length; context.offset++) {

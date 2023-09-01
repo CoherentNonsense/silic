@@ -2,8 +2,8 @@
 
 #include "string.h"
 
-int token_symbol_compare(String source, Token* token, char* symbol) {
-    return !strncmp(source.data + token->start, symbol, token->end - token->start);
+int token_compare_literal(Token* token, char* literal) {
+    return !strncmp(token->span.start, literal, token->span.length);
 }
 
 char* token_string(TokenKind kind) {
@@ -30,4 +30,8 @@ char* token_string(TokenKind kind) {
         case TokenKind_KeywordExtern: return "Keyword(extern)"; break;
         default: return "Unknown Token"; break;
     }
+}
+
+void token_print(Token* token) {
+    printf("%.*s", (int)token->span.length, token->span.start);
 }
