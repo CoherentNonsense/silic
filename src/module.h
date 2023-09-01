@@ -5,7 +5,7 @@
 
 typedef struct Module {
     AstRoot* ast;
-    char* source;
+    Span source;
 } Module;
 
 #endif //!MODULE_H

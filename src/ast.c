@@ -26,7 +26,6 @@ static void print_type(Type* type) {
 }
 
 static void print_expression(Expr* expression) {
-    printf("~Expression~\n");
     switch (expression->kind) {
 	case ExprKind_Ret: {
 	    printf("kind: return\n");
@@ -47,7 +46,7 @@ static void print_expression(Expr* expression) {
 	}
 
 	case ExprKind_Let: {
-	    printf("kind: let\n");
+	    printf("kind: let\t");
 	    printf("name: ");
 	    span_println(expression->let.name);
 	    print_type(expression->let.type);
@@ -56,7 +55,7 @@ static void print_expression(Expr* expression) {
 	}
 
 	case ExprKind_Symbol: {
-	    printf("kind: symbol\n");
+	    printf("kind: symbol\t");
 	    printf("name: ");
 	    span_println(expression->symbol);
 	    break;
@@ -76,9 +75,9 @@ static void print_expression(Expr* expression) {
 }
 
 static void print_statement(Stmt* statement) {
-    printf("~Statement~\n");
     switch (statement->kind) {
 	case StmtKind_Expr: {
+	    printf("~Expression Statement~\n");
 	    print_expression(statement->expression);
 	    break;
 	}
@@ -86,16 +85,29 @@ static void print_statement(Stmt* statement) {
 }
 
 static void print_block(Block* block) {
-    printf("~Block~\n");
     for (int i = 0; i < block->statements.length; i++) {
+	printf(" ");
 	Stmt* statement = list_get(block->statements, i);
 	print_statement(statement);
     }
 }
 
 static void print_fn_declaration(FnDecl* fn_declaration) {
-    printf("signature: () -> void\n");
+    printf("signature: (");
+    for (int i = 0; i < fn_declaration->parameters.length; i++) {
+	FnParam* parameter = list_get(fn_declaration->parameters, i);
+	span_print(parameter->name);
+	printf(": T");
+	if (i < fn_declaration->parameters.length - 1) {
+	    printf(", ");
+	}
+    }
+
+    printf(") -> T\n{\n");
+
     print_block(fn_declaration->body);
+
+    printf("}\n");
 }
 
 static void print_item(Item* item) {

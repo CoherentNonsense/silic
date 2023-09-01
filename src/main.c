@@ -1,3 +1,4 @@
+#include "compiler.h"
 #include "module.h"
 #include "token.h"
 #include "lexer.h"
@@ -98,28 +99,9 @@ int main(int argc, char** argv) {
 
     Span source = (Span){ buffer, length };
 
+    Module module = compiler_compile_module(source);
 
-    // ------ //
-    // Lexing //
-    printf("Lexing File...\n");
-    TokenList token_list = lexer_lex(source);
-
-    list_foreach(token_list, token) {
-        printf("%s: ", token_string(token->kind));
-	token_print(token);
-        printf("\n");
-    }
-
-
-    // ------- //
-    // Parsing //
-    printf("\nParsing Tokens...\n");
-    Module module = parser_parse(source, token_list);
     free(buffer);
-
-    ast_print(module.ast);
-    
-    list_deinit(token_list);
 
     return EXIT_SUCCESS;
 }

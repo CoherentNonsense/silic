@@ -216,7 +216,7 @@ static Block* parse_block(ParserContext* context) {
 }
 
 static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
-    FnDecl* fn_declaration = malloc(sizeof(FnDecl));
+    FnDecl* fn_decl = malloc(sizeof(FnDecl));
     (*item)->kind = ItemKind_FnDecl;
 
     expect_token(context, TokenKind_KeywordFn);
@@ -225,18 +225,39 @@ static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
     (*item)->name = name_token->span;
 
     expect_token(context, TokenKind_LParen);
+
+    list_init(fn_decl->parameters);
+    while (current_token(context)->kind != TokenKind_RParen) {
+	FnParam* parameter = malloc(sizeof(FnParam));
+
+	Token* name_token = expect_token(context, TokenKind_Symbol);
+	parameter->name = name_token->span;
+
+	expect_token(context, TokenKind_Colon);
+
+	parameter->type = parse_type(context);
+
+	list_push(fn_decl->parameters, parameter);
+
+	if (current_token(context)->kind != TokenKind_Comma) {
+	    break;
+	}
+
+	consume_token(context);
+    }
+
     expect_token(context, TokenKind_RParen);
 
     if (current_token(context)->kind == TokenKind_Arrow) {
 	consume_token(context);
-	fn_declaration->return_type = parse_type(context);
+	fn_decl->return_type = parse_type(context);
     } else {
-	fn_declaration->return_type = NULL;
+	fn_decl->return_type = NULL;
     }
 
-    fn_declaration->body = parse_block(context);
+    fn_decl->body = parse_block(context);
 
-    return fn_declaration;
+    return fn_decl;
 }
 
 static Item* parse_item(ParserContext* context) {
@@ -268,7 +289,7 @@ static AstRoot* parse_root(ParserContext* context) {
     return root;
 }
 
-Module parser_parse(Span source, TokenList token_list) {
+AstRoot* parser_parse(Span source, TokenList token_list) {
     ParserContext context;
     context.source = source;
     context.token_list = token_list;
@@ -276,5 +297,5 @@ Module parser_parse(Span source, TokenList token_list) {
 
     AstRoot* ast = parse_root(&context);
 
-    return (Module) { ast };
+    return ast;
 }
