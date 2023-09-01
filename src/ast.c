@@ -32,49 +32,47 @@ static void print_type(Type* type) {
 	}
 
 	case TypeKind_Ptr: {
-	    printf(BOLDGREEN);
-	    printf("*");
+	    printf(BOLDGREEN "*");
 	    print_type(type->ptr.to);
+	    break;
+	}
+
+	case TypeKind_Never: {
+	    printf(BOLDGREEN "!" RESET);
 	    break;
 	}
 	
 	default: {
-	    printf("unhandled type\n");
+	    sil_panic("unhandled type %d", type->kind);
 	}
     }
 }
 
-static void print_pattern(Span span) {
-    printf(CYAN);
-    span_print(span);
-    printf(RESET);
-}
-
 static void print_expression(Expr* expression) {
-    printf("expr: ");
+    printf("expr: " YELLOW);
     switch (expression->kind) {
 	case ExprKind_Ret: {
-	    printf(BOLDYELLOW "return\n" RESET);
+	    printf("return\n" RESET);
 	    print_expression(expression->ret);
 	    break;
 	}
 	
 	case ExprKind_NumberLit: {
-	    printf(BOLDYELLOW "number literal\n" RESET);
+	    printf("number literal\n" RESET);
 	    break;
 	}
 
 	case ExprKind_BinOp: {
-	    printf(BOLDYELLOW "binop\n" RESET);
+	    printf("binop\n" RESET);
 	    print_expression(expression->binary_operator.left);
 	    print_expression(expression->binary_operator.right);
 	    break;
 	}
 
 	case ExprKind_Let: {
-	    printf(BOLDYELLOW "let\t" RESET);
+	    printf("let\t" RESET);
 	    printf("name: ");
-	    print_pattern(expression->let.name);
+	    span_print(expression->let.name);
 	    printf("\ttype: ");
 	    print_type(expression->let.type);
 	    printf("\n");
@@ -83,14 +81,14 @@ static void print_expression(Expr* expression) {
 	}
 
 	case ExprKind_Symbol: {
-	    printf(BOLDYELLOW "symbol\t" RESET);
+	    printf("symbol\t" RESET);
 	    printf("name: ");
 	    span_println(expression->symbol);
 	    break;
 	}
 
 	case ExprKind_FnCall: {
-	    printf(BOLDYELLOW "fn call\t" RESET);
+	    printf("fn call\t" RESET);
 	    printf("name: ");
 	    span_println(expression->fn_call.name);
 	    break;
@@ -105,7 +103,7 @@ static void print_expression(Expr* expression) {
 static void print_statement(Stmt* statement) {
     switch (statement->kind) {
 	case StmtKind_Expr: {
-	    printf("Expression Statement\n");
+	    printf(BOLDWHITE "Expression Statement\n" RESET);
 	    print_expression(statement->expression);
 	    printf("\n");
 	    break;
@@ -120,40 +118,51 @@ static void print_block(Block* block) {
     }
 }
 
-static void print_fn_declaration(FnDecl* fn_decl) {
+static void print_fn_signature(FnSig* fn_sig) {
     printf("signature: (");
-    for (int i = 0; i < fn_decl->parameters.length; i++) {
-	FnParam* parameter = list_get(fn_decl->parameters, i);
-	print_pattern(parameter->name);
+    for (int i = 0; i < fn_sig->parameters.length; i++) {
+	FnParam* parameter = list_get(fn_sig->parameters, i);
+	span_print(parameter->name);
 	printf(": ");
 	print_type(parameter->type);
-	if (i < fn_decl->parameters.length - 1) {
+	if (i < fn_sig->parameters.length - 1) {
 	    printf(", ");
 	}
     }
 
     printf(") -> ");
-    print_type(fn_decl->return_type);
-    printf("\nbody: {\n\n");
+    print_type(fn_sig->return_type);
+    printf("\n");
+}
 
+static void print_fn_declaration(FnDecl* fn_decl) {
+    print_fn_signature(fn_decl->signature);
+
+    printf("body: {\n\n");
     print_block(fn_decl->body);
-
-    printf("}\n");
+    printf("}");
 }
 
 static void print_item(Item* item) {
-    printf("Item\n");
-    printf("name: ");
-    span_println(item->name);
+    printf(BOLDMAGENTA "~ Item " RESET);
 
     switch (item->kind) {
 	case ItemKind_FnDecl: {
-	    printf("type: function declaration\n");
+	    printf(YELLOW "function declaration\n" RESET "name: ");
+	    span_println(item->name);
 	    print_fn_declaration(item->fn_declaration);
+	    break;
+	}
+
+	case ItemKind_ExternFn: {
+	    printf(YELLOW "extern function\n" RESET "name: ");
+	    span_println(item->name);
+	    print_fn_signature(item->extern_fn->signature);
+	    break;
 	}
     }
 
-    FnDecl* fn_declaration = item->fn_declaration;
+    printf("\n");
 }
 
 void ast_print(AstRoot* root) {

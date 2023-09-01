@@ -34,19 +34,33 @@ static Token* expect_token(ParserContext* context, TokenKind kind) {
 
 static Type* parse_type(ParserContext* context) {
     Type* type = malloc(sizeof(Type));
+    
+    Token* token = consume_token(context);
+    switch (token->kind) {
+	case TokenKind_Star: {
+	    type->kind = TypeKind_Ptr;
+	    type->ptr.to = parse_type(context);
 
-    if (current_token(context)->kind == TokenKind_Star) {
-	consume_token(context);
-	type->kind = TypeKind_Ptr;
-	type->ptr.to = parse_type(context);
+	    break;
+	}
 
-	return type;
+	case TokenKind_Bang: {
+	    type->kind = TypeKind_Never;
+
+	    break;
+	}
+
+	case TokenKind_Symbol: {	
+	    type->kind = TypeKind_Symbol;
+	    type->symbol = token->span;
+	    break;
+	}
+
+	default: {
+	    sil_panic("Unexpected type: %s", token_string(token->kind));
+	}
     }
 
-    Token* type_token = expect_token(context, TokenKind_Symbol);
-
-    type->kind = TypeKind_Symbol;
-    type->symbol = type_token->span;
 
     return type;
 }
@@ -215,18 +229,17 @@ static Block* parse_block(ParserContext* context) {
     return block;
 }
 
-static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
-    FnDecl* fn_decl = malloc(sizeof(FnDecl));
-    (*item)->kind = ItemKind_FnDecl;
+static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
+    FnSig* fn_sig = malloc(sizeof(FnSig));
 
     expect_token(context, TokenKind_KeywordFn);
 
     Token* name_token = expect_token(context, TokenKind_Symbol);
-    (*item)->name = name_token->span;
+    *name = name_token->span;
 
     expect_token(context, TokenKind_LParen);
 
-    list_init(fn_decl->parameters);
+    list_init(fn_sig->parameters);
     while (current_token(context)->kind != TokenKind_RParen) {
 	FnParam* parameter = malloc(sizeof(FnParam));
 
@@ -237,7 +250,7 @@ static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
 
 	parameter->type = parse_type(context);
 
-	list_push(fn_decl->parameters, parameter);
+	list_push(fn_sig->parameters, parameter);
 
 	if (current_token(context)->kind != TokenKind_Comma) {
 	    break;
@@ -250,11 +263,18 @@ static FnDecl* parse_fn_declaration(ParserContext* context, Item** item) {
 
     if (current_token(context)->kind == TokenKind_Arrow) {
 	consume_token(context);
-	fn_decl->return_type = parse_type(context);
+	fn_sig->return_type = parse_type(context);
     } else {
-	fn_decl->return_type = NULL;
+	fn_sig->return_type = NULL;
     }
 
+    return fn_sig;
+}
+
+static FnDecl* parse_fn_declaration(ParserContext* context, Span* name) {
+    FnDecl* fn_decl = malloc(sizeof(FnDecl));
+
+    fn_decl->signature = parse_fn_signature(context, name);
     fn_decl->body = parse_block(context);
 
     return fn_decl;
@@ -265,12 +285,22 @@ static Item* parse_item(ParserContext* context) {
 
     switch (current_token(context)->kind) {
 	case TokenKind_KeywordFn: {
-	    item->fn_declaration = parse_fn_declaration(context, &item);
+	    item->kind = ItemKind_FnDecl;
+	    item->fn_declaration = parse_fn_declaration(context, &item->name);
+	    break;
+	}
+
+	case TokenKind_KeywordExtern: {
+	    item->kind = ItemKind_ExternFn;
+	    consume_token(context);
+	    item->extern_fn = malloc(sizeof(ExternFn));
+	    item->extern_fn->signature = parse_fn_signature(context, &item->name);
+	    expect_token(context, TokenKind_Semicolon);
 	    break;
 	}
 
 	default: {
-	    sil_panic("Expected fn");
+	    sil_panic("Expected item, got %s", token_string(current_token(context)->kind));
 	}
     }
 

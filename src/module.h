@@ -2,6 +2,7 @@
 #define MODULE_H
 
 #include "ast.h"
+#include "hashmap.h"
 
 typedef struct Module {
     AstRoot* ast;

@@ -1,13 +1,8 @@
-const { println } = import("std");
+extern fn puts(message: *u8) -> i32;
+extern fn exit(status: i32) -> !;
 
-mod stm32f1xx.reg {
-    const PORT_A: u32 = 0x70023a0;
-}
+fn start() -> ! {
+    puts();
 
-fn main() {
-    if person.can_drive() {
-        print("I can drive!\n");
-    } else {
-        print("I can't drive :(");
-    }
+    exit();
 }

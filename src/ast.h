@@ -14,15 +14,24 @@ REGISTER_LIST_PTR(Stmt);
 // ---- //
 // Type //
 // ---- //
+typedef struct Type Type;
+
 typedef enum TypeKind {
     TypeKind_Symbol,
+    TypeKind_Int,
+    TypeKind_Float,
     TypeKind_Ptr,
     TypeKind_Array,
+    TypeKind_Never,
 } TypeKind;
 
-typedef struct Type Type;
+typedef struct Int {
+    bool is_signed;
+} Int;
+
 typedef struct Ptr {
     Type* to;
+    bool is_mut;
 } Ptr;
 
 typedef struct Type {
@@ -135,6 +144,7 @@ typedef struct Stmt {
 // ---- //
 typedef enum ItemKind {
     ItemKind_FnDecl,
+    ItemKind_ExternFn,
 } ItemKind;
 
 typedef struct FnParam {
@@ -143,17 +153,26 @@ typedef struct FnParam {
 } FnParam;
 REGISTER_LIST_PTR(FnParam);
 
-typedef struct FnDecl {
+typedef struct FnSig {
     FnParamPtrList parameters;
     Type* return_type;
+} FnSig;
+
+typedef struct FnDecl {
+    FnSig* signature;
     Block* body;
 } FnDecl;
+
+typedef struct ExternFn {
+    FnSig* signature;
+} ExternFn;
 
 typedef struct Item {
     ItemKind kind;
     Span name;
     union {
 	FnDecl* fn_declaration;
+	ExternFn* extern_fn;
     };
 } Item;
 REGISTER_LIST_PTR(Item);
