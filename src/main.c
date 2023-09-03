@@ -3,6 +3,7 @@
 #include "token.h"
 #include "lexer.h"
 #include "parser.h"
+#include "codegen.h"
 #include "string.h"
 #include "list.h"
 #include "hashmap.h"
@@ -12,10 +13,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <iso646.h>
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 0
 #define VERSION_PATCH 0
+
 
 static Result read_file(const char* path, char** buffer, int* length) {
     FILE* file = fopen(path, "rb");
@@ -64,7 +67,7 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         char* arg = argv[i];
 
-        if (arg[0] == '-' && arg[1] == '-') {
+        if ((arg[0] == '-') and (arg[1] == '-')) {
             if (strcmp(arg, "--version") == 0) {
                 printf("%d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
                 return 0;
@@ -83,7 +86,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (in_file_path == 0 || out_file_path == 0) {
+    if ((in_file_path == 0) or (out_file_path == 0)) {
         print_usage(arg0);
         return EXIT_FAILURE;
     }

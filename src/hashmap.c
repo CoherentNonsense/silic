@@ -2,6 +2,8 @@
 
 #include "util.h"
 
+#include <iso646.h>
+
 
 static size_t hash_function(Span string) {
     // FNV 32-bit hash
@@ -54,7 +56,7 @@ void* map_get(HashMap* map, Span key) {
     for (int i = 0; i < map->entries.capacity; i++) {
         size_t index = (start_index + i) % map->entries.capacity;
         Entry* entry = list_get_ref(map->entries, index);
-        if (entry->used && strncmp(key.start, entry->key.start, key.length)) {
+        if (entry->used and strncmp(key.start, entry->key.start, key.length)) {
             return entry->value;
         }
     }

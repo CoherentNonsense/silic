@@ -3,6 +3,8 @@
 #include "token.h"
 #include "util.h"
 
+#include <iso646.h>
+
 #define WHITESPACE \
     ' ': \
     case '\t': \
@@ -263,7 +265,7 @@ TokenList lexer_lex(Span source) {
                 break;
 
             case LexerState_MultilineComment:
-                if (current_char == '*' && get_char(&context, context.offset + 1) == '/') {
+                if ((current_char == '*') and (get_char(&context, context.offset + 1) == '/')) {
                     context.offset += 1;
                     context.position.column += 1;
                     context.state = LexerState_Start;
