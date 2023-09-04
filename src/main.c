@@ -5,7 +5,6 @@
 #include "parser.h"
 #include "codegen.h"
 #include "string.h"
-#include "list.h"
 #include "hashmap.h"
 #include "util.h"
 
@@ -102,7 +101,7 @@ int main(int argc, char** argv) {
 
     Span source = (Span){ buffer, length };
 
-    Module module = compiler_compile_module(source);
+    compiler_compile_module(source);
 
     free(buffer);
 

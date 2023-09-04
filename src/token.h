@@ -2,7 +2,6 @@
 #define TOKEN_H
 
 #include "span.h"
-#include "list.h"
 
 typedef enum TokenKind {
     TokenKind_Eof,
@@ -52,8 +51,6 @@ typedef struct Token {
     TextPosition position;
     Span span;
 } Token;
-
-REGISTER_LIST(Token);
 
 char* token_string(TokenKind type);
 int token_compare_literal(Token* token, char* symbol);

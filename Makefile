@@ -1,6 +1,5 @@
 CFILES = $(wildcard src/*.c src/*/*.c)
 OFILES = $(patsubst src/%.c, build/%.o, $(CFILES))
-OBJECTS = src/main.c src/util.c src/lexer.c src/parser.c src/span.c src/codegen.c src/hashmap.c src/token.c
 
 all: sil
 

@@ -2,14 +2,12 @@
 #define AST_H
 
 #include "span.h"
-#include "list.h"
+#include "dynarray.h"
 #include <stdbool.h>
 
 typedef struct Expr Expr;
 typedef struct Stmt Stmt;
 
-REGISTER_LIST_PTR(Expr);
-REGISTER_LIST_PTR(Stmt);
 
 // ---- //
 // Type //
@@ -69,7 +67,7 @@ typedef struct NumberLit {
 } NumberLit;
 
 typedef struct Block {
-    StmtPtrList statements;
+    DynArray(Stmt*) statements;
 } Block;
 
 typedef enum BinOpKind {
@@ -106,7 +104,7 @@ typedef struct Let {
 
 typedef struct FnCall {
     Span name;
-    ExprPtrList arguments;
+    DynArray(Expr*) arguments;
 } FnCall;
 
 typedef struct Expr {
@@ -152,10 +150,9 @@ typedef struct FnParam {
     Span name;
     Type* type;
 } FnParam;
-REGISTER_LIST_PTR(FnParam);
 
 typedef struct FnSig {
-    FnParamPtrList parameters;
+    DynArray(FnParam*) parameters;
     Type* return_type;
 } FnSig;
 
@@ -176,10 +173,9 @@ typedef struct Item {
 	ExternFn* extern_fn;
     };
 } Item;
-REGISTER_LIST_PTR(Item);
 
 typedef struct AstRoot {
-    ItemPtrList items;
+    DynArray(Item*) items;
 } AstRoot;
 
 void ast_print(AstRoot* root);

@@ -3,20 +3,21 @@
 #include "token.h"
 #include "lexer.h"
 #include "parser.h"
-#include "qbe_codegen.h"
+#include "c_codegen.h"
 #include "util.h"
 
 
-Module compiler_compile_module(Span source) {
-    Module module;
-    module.source = source;
+Module* compiler_compile_module(Span source) {
+    Module* module = malloc(sizeof(Module));
+    module->source = source;
+
 
     // ------ //
     // Lexing //
     printf(BOLDWHITE "Lexing File...\n" RESET);
-    TokenList token_list = lexer_lex(source);
+    lexer_lex(module);
 
-    list_foreach(token_list, token) {
+    dynarray_foreach(module->token_list, token) {
         printf("%s: ", token_string(token->kind));
 	token_print(token);
         printf("\n");
@@ -26,16 +27,15 @@ Module compiler_compile_module(Span source) {
     // ------- //
     // Parsing //
     printf(BOLDWHITE "\nParsing Tokens...\n" RESET);
-    module.ast = parser_parse(source, token_list); 
-    list_deinit(token_list);
+    parser_parse(module); 
 
-    ast_print(module.ast);
+    ast_print(module->ast);
 
 
     // ------- //
     // Codegen //
-    printf(BOLDWHITE "\nGENERATING QBE IR...\n" RESET);
-    qbe_codegen_generate(&module);
+    printf(BOLDWHITE "\nGENERATING IR...\n" RESET);
+    c_codegen_generate(module);
 
 
     return module;

@@ -1,8 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "token.h"
+#include "module.h"
 
-TokenList lexer_lex(Span source);
+void lexer_lex(Module* module);
 
 #endif // !LEXER_H

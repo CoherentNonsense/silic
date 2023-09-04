@@ -1,7 +1,7 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
-#include "list.h"
+#include "dynarray.h"
 #include "span.h"
 
 
@@ -10,10 +10,9 @@ typedef struct Entry {
     void* value;
     char used;
 } Entry;
-REGISTER_LIST(Entry);
 
 typedef struct HashMap {
-    EntryList entries;
+    DynArray(Entry) entries;
 } HashMap;
 
 void map_delete(HashMap* map);
@@ -22,7 +21,7 @@ void* map_get(HashMap* map, Span key);
 int map_has(HashMap* map,  Span key);
 
 #define map_iterate(map, entry, cb) for (int i  = 0; i < map.entries.capacity; i++) {\
-        Entry* entry = list_get_generic(sizeof(Entry), &map.entries, i);\
+        Entry* entry = dynarray_get_generic(sizeof(Entry), &map.entries, i);\
         if (!entry->used) {\
             continue;\
         }\

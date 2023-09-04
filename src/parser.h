@@ -1,9 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "ast.h"
-#include "token.h"
+#include "module.h"
 
-AstRoot* parser_parse(Span source, TokenList token_list);
+void parser_parse(Module* module);
 
 #endif // PARSER_H

@@ -39,44 +39,30 @@ typedef enum LexerState {
 } LexerState;
 
 typedef struct LexerContext {
-    Span source;
+    Module* module;
     size_t offset;
     LexerState state;
     TextPosition position;
     Token* current_token;
-    TokenList token_list;
 } LexerContext;
 
-static LexerContext init_context(Span source) {
-    LexerContext context;
-    context.source = source;
-    context.offset = 0;
-    context.state = LexerState_Start;
-    context.position = (TextPosition){ 1, 1 };
-    context.current_token = 0;
-    
-    list_init(context.token_list);
-
-    return context;
-}
-
 static char get_char(LexerContext* context, unsigned int offset) {
-    return *(context->source.start + offset);
+    return *(context->module->source.start + offset);
 }
 
 static void begin_token(LexerContext* context, TokenKind kind) {
-    list_reserve(context->token_list, 1);
-    context->current_token = list_get_ref(context->token_list, context->token_list.length - 1);
+    dynarray_reserve(context->module->token_list, 1);
+    context->current_token = dynarray_get_ref(context->module->token_list, context->module->token_list.length - 1);
 
     Token* token = context->current_token;
     token->kind = kind;
     token->position = context->position;
-    token->span.start = context->source.start + context->offset;
+    token->span.start = context->module->source.start + context->offset;
 }
 
 static void end_token(LexerContext* context) {
     Token* token = context->current_token;
-    token->span.length = (context->offset - (size_t)(token->span.start - context->source.start)) + 1;
+    token->span.length = (context->offset - (size_t)(token->span.start - context->module->source.start)) + 1;
 
     if (token->kind == TokenKind_Symbol) {
         if (token_compare_literal(token, "fn")) {
@@ -101,10 +87,19 @@ static void end_token(LexerContext* context) {
     }
 }
 
-TokenList lexer_lex(Span source) {
-    LexerContext context = init_context(source);
+void lexer_lex(Module* module) {
+    LexerContext context;
+    context.module = module;
+    context.offset = 0;
+    context.state = LexerState_Start;
+    context.position = (TextPosition){ 1, 1 };
+    context.current_token = 0;
 
-    for (context.offset = 0; context.offset < source.length; context.offset++) {
+    dynarray_init(context.module->token_list);
+    
+    dynarray_init(context.module->token_list);
+
+    for (context.offset = 0; context.offset < module->source.length; context.offset++) {
         char current_char = get_char(&context, context.offset);
 
         switch (context.state) {
@@ -185,7 +180,7 @@ TokenList lexer_lex(Span source) {
                         context.state = LexerState_Slash;
                         break;
                     default:
-                        sil_panic("Unknown character: %c", current_char);
+                        sil_panic("Unknown character: '%c' (%d)", current_char, current_char);
                 }
                 break;
 
@@ -287,6 +282,4 @@ TokenList lexer_lex(Span source) {
     // end of file
     begin_token(&context, TokenKind_Eof);
     end_token(&context);
-
-    return context.token_list;
 }

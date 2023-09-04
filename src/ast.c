@@ -80,7 +80,7 @@ static void print_expression(Expr* expression) {
 	    span_println(expression->fn_call.name);
 	    printf("args: (\n");
 	    for (int i = 0; i < expression->fn_call.arguments.length; i++) {
-		print_expression(list_get(expression->fn_call.arguments, i));
+		print_expression(dynarray_get(expression->fn_call.arguments, i));
 		if (i < expression->fn_call.arguments.length - 1) {
 		    printf(",\n");
 		}
@@ -108,7 +108,7 @@ static void print_statement(Stmt* statement) {
 
 static void print_block(Block* block) {
     for (int i = 0; i < block->statements.length; i++) {
-	Stmt* statement = list_get(block->statements, i);
+	Stmt* statement = dynarray_get(block->statements, i);
 	print_statement(statement);
     }
 }
@@ -116,7 +116,7 @@ static void print_block(Block* block) {
 static void print_fn_signature(FnSig* fn_sig) {
     printf("signature: (");
     for (int i = 0; i < fn_sig->parameters.length; i++) {
-	FnParam* parameter = list_get(fn_sig->parameters, i);
+	FnParam* parameter = dynarray_get(fn_sig->parameters, i);
 	span_print(parameter->name);
 	printf(": ");
 	print_type(parameter->type);
@@ -164,7 +164,7 @@ void ast_print(AstRoot* root) {
     printf("\n" BOLDWHITE "- AST View" RESET "\n");
 
     for (int i = 0; i < root->items.length; i += 1) {
-	Item* item = list_get(root->items, i);
+	Item* item = dynarray_get(root->items, i);
 	print_item(item);
     }
 }
