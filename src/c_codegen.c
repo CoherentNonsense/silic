@@ -1,37 +1,53 @@
 #include "c_codegen.h"
 
-#include <stdint.h>
 #include <iso646.h>
 
-// C- Primitives
-typedef uint8_t u8;
-typedef int8_t i8;
-typedef uint16_t u16;
-typedef int16_t i16;
-typedef uint32_t u32;
-typedef int32_t i32;
-typedef uint64_t u64;
-typedef int64_t i64;
-typedef __uint128_t u128;
-typedef __int128_t i128;
-typedef float f32;
-typedef double f64;
-typedef void* ptr;
+static char prelude_text[] =
+    "// ------------------- //\n"
+    "// C(IR) PRELUDE START //\n"
+    "// ------------------- //\n"
+    "\n"
+    "#include <stdint.h>\n"
+    "\n"
+    "// Primitives\n"
+    "typedef uint8_t u8;\n"
+    "typedef int8_t i8;\n"
+    "typedef uint16_t u16;\n"
+    "typedef int16_t i16;\n"
+    "typedef uint32_t u32;\n"
+    "typedef int32_t i32;\n"
+    "typedef uint64_t u64;\n"
+    "typedef int64_t i64;\n"
+    "typedef float f32;\n"
+    "typedef double f64;\n"
+    "typedef void* ptr;\n"
+    "\n"
+    "// ----------------- //\n"
+    "// C(IR) PRELUDE END //\n"
+    "// ----------------- //\n";
+
+static size_t prelude_text_length = sizeof(prelude_text) - 1;
+
+typedef struct CodegenContext {
+    FILE* out_file;
+} CodegenContext;
+
+static void generate_prelude(CodegenContext* context) {
+    fwrite(prelude_text, prelude_text_length, 1, context->out_file);
+}
 
 void c_codegen_generate(Module* module) {
-    /*
-    FILE* out_file = fopen("program.c", "wb");
-    if (out_file == NULL) {
-	printf("Could not write file\n");
+    CodegenContext context;
+    context.out_file = fopen("build/module.c", "wb");
+    if (context.out_file == NULL) {
+	printf("Could not open file\n");
 	return;
     }
 
-    char* content = "int add(int a) {\nreturn a + 123;\n}";
+    generate_prelude(&context);
 
-    fwrite(content, strlen(content), 1, out_file);
-    fclose(out_file);
+    fclose(context.out_file);
 
-    system("gcc -S -O1 program.c -o program.s");
-    */
+    //system("gcc -S -O1 program.c -o program.s");
 }
 

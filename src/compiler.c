@@ -14,13 +14,13 @@ Module* compiler_compile_module(Span source) {
 
     // ------ //
     // Lexing //
-    printf(BOLDWHITE "Lexing File...\n" RESET);
+    printf(BOLDWHITE "\nLexing File...\n" RESET);
     lexer_lex(module);
 
     dynarray_foreach(module->token_list, token) {
-        printf("%s: ", token_string(token->kind));
+        printf("%s: " YELLOW, token_string(token->kind));
 	token_print(token);
-        printf("\n");
+        printf(RESET "\n");
     }
 
 
@@ -30,6 +30,11 @@ Module* compiler_compile_module(Span source) {
     parser_parse(module); 
 
     ast_print(module->ast);
+
+   
+    // --------- //
+    // Analyzing //
+    printf(BOLDWHITE "\nAnalyzing AST...\n" RESET);
 
 
     // ------- //

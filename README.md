@@ -1,4 +1,4 @@
-# The Sil Programming Language
+# The Silic Programming Language
 
 A low-level programming language with an emphasis on simplicity for embedded systems.
 

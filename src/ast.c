@@ -161,7 +161,6 @@ static void print_item(Item* item) {
 }
 
 void ast_print(AstRoot* root) {
-    printf("\n" BOLDWHITE "- AST View" RESET "\n");
 
     for (int i = 0; i < root->items.length; i += 1) {
 	Item* item = dynarray_get(root->items, i);

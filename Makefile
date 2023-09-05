@@ -1,16 +1,13 @@
 CFILES = $(wildcard src/*.c src/*/*.c)
 OFILES = $(patsubst src/%.c, build/%.o, $(CFILES))
 
-all: sil
+all: silic
 
 build/%.o: src/%.c
 	gcc -c -o $@ -Isrc $<
 
-sil: $(OFILES)
+silic: $(OFILES)
 	gcc -o $@ $(OFILES)
 
-sil_old: $(OFILES)
-	gcc $(OBJECTS) -o $@
-
 clean:
-	-rm ./sil build/*.o
+	-rm ./silic build/*.o
