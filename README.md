@@ -2,7 +2,7 @@
 
 A low-level programming language with an emphasis on simplicity for embedded systems.
 
-`Note: I am using this project to learn compiler development and most of this README isn't implemented.`
+`Note: I am using this project to learn compiler development so stuff might change around a lot.`
 
 
 `hello_world.sil`
