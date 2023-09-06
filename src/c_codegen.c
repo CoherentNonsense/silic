@@ -1,53 +1,191 @@
 #include "c_codegen.h"
 
+#include "ast.h"
+#include "os.h"
 #include <iso646.h>
 
-static char prelude_text[] =
-    "// ------------------- //\n"
-    "// C(IR) PRELUDE START //\n"
-    "// ------------------- //\n"
-    "\n"
-    "#include <stdint.h>\n"
-    "\n"
-    "// Primitives\n"
-    "typedef uint8_t u8;\n"
-    "typedef int8_t i8;\n"
-    "typedef uint16_t u16;\n"
-    "typedef int16_t i16;\n"
-    "typedef uint32_t u32;\n"
-    "typedef int32_t i32;\n"
-    "typedef uint64_t u64;\n"
-    "typedef int64_t i64;\n"
-    "typedef float f32;\n"
-    "typedef double f64;\n"
-    "typedef void* ptr;\n"
-    "\n"
-    "// ----------------- //\n"
-    "// C(IR) PRELUDE END //\n"
-    "// ----------------- //\n";
-
-static size_t prelude_text_length = sizeof(prelude_text) - 1;
 
 typedef struct CodegenContext {
     FILE* out_file;
+    size_t indent_level;
 } CodegenContext;
 
-static void generate_prelude(CodegenContext* context) {
-    fwrite(prelude_text, prelude_text_length, 1, context->out_file);
+static void write(CodegenContext* context, Span span) {
+    fwrite(span.start, span.length, 1, context->out_file);
+}
+
+// using a macro so we can use sizeof on the literal
+#define write_literal(context, literal) \
+    fwrite(literal, sizeof(literal) - 1, 1, context->out_file)
+
+void write_indent(CodegenContext* context) {
+    for (int i = 0; i < context->indent_level; i++) {
+	write_literal(context, "    ");
+    }
+}
+
+static void generate_type(CodegenContext* context, Type* type) {
+    switch (type->kind) {
+	case TypeKind_Never: {
+	    write_literal(context, "void");
+	    break;
+	}
+
+	case TypeKind_Symbol: {
+	    write(context, type->symbol);
+	    break;
+	}
+
+	case TypeKind_Ptr: {
+	    generate_type(context, type->ptr.to);
+	    write_literal(context, "*");
+	    break;
+	}
+
+	default: sil_panic("Unhandled silic->c type");
+    }
+}
+
+static void generate_expression(CodegenContext* context, Expr* expression) {
+    switch (expression->kind) {
+	case ExprKind_NumberLit: {
+	    write(context, expression->number_literal.span);
+	    break;
+	}
+	case ExprKind_StringLit: {
+	    write(context, expression->string_literal.span);
+	    break;
+	}
+	case ExprKind_FnCall: {
+	    FnCall* call = expression->fn_call;
+
+	    write(context, call->name);
+	    write_literal(context, "(");
+
+	    for (int i = 0; i < call->arguments.length; i++) {
+		Expr* arg = dynarray_get(call->arguments, i);
+		generate_expression(context, arg);
+	    }
+
+	    write_literal(context, ")");
+	    
+	    break;
+	}
+			
+	default: sil_panic("Unhandled expression");
+    }
+}
+
+static void generate_statement(CodegenContext* context, Stmt* statement) {
+    write_indent(context);
+    if (statement->kind == StmtKind_Expr) {
+	generate_expression(context, statement->expression);
+	write_literal(context, ";\n");
+    }
+}
+
+static void generate_block(CodegenContext* context, Block* block) {
+    write_literal(context, "{\n");
+    context->indent_level += 1;
+
+    for (int i = 0; i < block->statements.length; i++) {
+	Stmt* statement = dynarray_get(block->statements, i);
+	generate_statement(context, statement);
+    }
+
+    context->indent_level -= 1;
+    write_literal(context, "}");
+}
+
+static void generate_fn_signature(CodegenContext* context, Item* item) {
+    FnSig* signature;
+    if (item->kind == ItemKind_FnDecl) {
+	signature = item->fn_declaration->signature;
+    } else if (item->kind == ItemKind_ExternFn) {
+	signature = item->extern_fn->signature;
+    } else {
+	sil_panic("Cannot generate signature for item type %d", item->kind);
+    }
+
+    generate_type(context, signature->return_type);
+
+    write_literal(context, " ");
+
+    write(context, item->name);
+    write_literal(context, "(");
+
+    for (int i = 0; i < signature->parameters.length; i++) {
+	FnParam* parameter = dynarray_get(signature->parameters, i);
+	generate_type(context, parameter->type);
+	write_literal(context, " ");
+	write(context, parameter->name);
+    }
+
+    write_literal(context, ")");
+}
+
+static void generate_definition(CodegenContext* context, Item* item) {
+    switch (item->kind) {
+	case ItemKind_FnDecl:
+	    generate_fn_signature(context, item);
+	    write_literal(context, " ");
+	    generate_block(context, item->fn_declaration->body);
+	    break;
+	
+	default: return;
+    }
+}
+
+static void generate_forward_declaration(CodegenContext* context, Item* item) {
+    switch (item->kind) {
+	case ItemKind_FnDecl:
+	case ItemKind_ExternFn:
+	    generate_fn_signature(context, item);
+	    write_literal(context, ";\n");
+	    break;
+    
+	default: return;
+    }
+}
+
+static void generate_ast(CodegenContext* context, AstRoot* ast) {
+    for (int i = 0; i < ast->items.length; i++) {
+        Item* item = dynarray_get(ast->items, i);
+        generate_forward_declaration(context, item);
+    }
+
+    write_literal(context, "\n");
+
+    for (int i = 0; i < ast->items.length; i++) {
+	Item* item = dynarray_get(ast->items, i);
+	generate_definition(context, item);
+    }
 }
 
 void c_codegen_generate(Module* module) {
     CodegenContext context;
-    context.out_file = fopen("build/module.c", "wb");
-    if (context.out_file == NULL) {
-	printf("Could not open file\n");
-	return;
+    context.indent_level = 0;
+
+    char* prelude_text;
+    int prelude_length;
+    Result prelude_result = read_file("prelude.c", &prelude_text, &prelude_length);
+    if (prelude_result.type != Ok) {
+        printf("Failed to load 'prelude.c'");
+        return;
     }
 
-    generate_prelude(&context);
+    context.out_file = fopen("ir.c", "wb");
+    if (context.out_file == NULL) {
+	    printf("Could not create ir\n");
+	    return;
+    }
+
+    fwrite(prelude_text, prelude_length, 1, context.out_file);
+
+    generate_ast(&context, module->ast);
 
     fclose(context.out_file);
 
-    //system("gcc -S -O1 program.c -o program.s");
+    system("gcc -O1 ir.c -o app");
 }
 

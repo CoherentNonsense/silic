@@ -22,6 +22,7 @@ Module* compiler_compile_module(Span source) {
 	token_print(token);
         printf(RESET "\n");
     }
+    printf(BOLDWHITE "Lexed File.\n" RESET);
 
 
     // ------- //
@@ -30,17 +31,20 @@ Module* compiler_compile_module(Span source) {
     parser_parse(module); 
 
     ast_print(module->ast);
+    printf(BOLDWHITE "Parsed Tokens.\n" RESET);
 
    
     // --------- //
     // Analyzing //
     printf(BOLDWHITE "\nAnalyzing AST...\n" RESET);
+    printf(BOLDWHITE "Analyzed Ast.\n" RESET);
 
 
     // ------- //
     // Codegen //
-    printf(BOLDWHITE "\nGENERATING IR...\n" RESET);
+    printf(BOLDWHITE "\nGenerating IR...\n" RESET);
     c_codegen_generate(module);
+    printf(BOLDWHITE "Generated IR.\n" RESET);
 
 
     return module;

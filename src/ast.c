@@ -77,11 +77,11 @@ static void print_expression(Expr* expression) {
 	case ExprKind_FnCall: {
 	    printf("fn call\t" RESET);
 	    printf("name: ");
-	    span_println(expression->fn_call.name);
+	    span_println(expression->fn_call->name);
 	    printf("args: (\n");
-	    for (int i = 0; i < expression->fn_call.arguments.length; i++) {
-		print_expression(dynarray_get(expression->fn_call.arguments, i));
-		if (i < expression->fn_call.arguments.length - 1) {
+	    for (int i = 0; i < expression->fn_call->arguments.length; i++) {
+		print_expression(dynarray_get(expression->fn_call->arguments, i));
+		if (i < expression->fn_call->arguments.length - 1) {
 		    printf(",\n");
 		}
 	    }

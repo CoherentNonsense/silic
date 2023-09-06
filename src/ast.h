@@ -34,9 +34,9 @@ typedef struct Ptr {
 
 typedef struct Type {
     TypeKind kind;
+    Span symbol;
     bool is_mut;
     union {
-	Span symbol;
 	Ptr ptr;
     };
 } Type;
@@ -118,7 +118,7 @@ typedef struct Expr {
 	Let let;
 	Expr* ret;
 	Span symbol;
-	FnCall fn_call;
+	FnCall* fn_call;
     };
 } Expr;
 

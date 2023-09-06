@@ -35,6 +35,7 @@ static Type* parse_type(ParserContext* context) {
     Type* type = malloc(sizeof(Type));
     
     Token* token = consume_token(context);
+    type->symbol = token->span;
     switch (token->kind) {
 	case TokenKind_Star: {
 	    type->kind = TypeKind_Ptr;
@@ -51,7 +52,7 @@ static Type* parse_type(ParserContext* context) {
 
 	case TokenKind_Symbol: {	
 	    type->kind = TypeKind_Symbol;
-	    type->symbol = token->span;
+
 	    break;
 	}
 
@@ -59,7 +60,6 @@ static Type* parse_type(ParserContext* context) {
 	    sil_panic("Unexpected type: %s", token_string(token->kind));
 	}
     }
-
 
     return type;
 }
@@ -140,14 +140,15 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    expression->kind = ExprKind_FnCall;
 
-	    expression->fn_call.name = symbol_token->span;
+	    expression->fn_call = malloc(sizeof(FnCall));
+	    expression->fn_call->name = symbol_token->span;
 
 	    expect_token(context, TokenKind_LParen);
 
-	    dynarray_init(expression->fn_call.arguments);
+	    dynarray_init(expression->fn_call->arguments);
 	    while (current_token(context)->kind != TokenKind_RParen) {
 		Expr* arg = parse_expression(context);
-		dynarray_push(expression->fn_call.arguments, arg);
+		dynarray_push(expression->fn_call->arguments, arg);
 
 		if (current_token(context)->kind != TokenKind_Comma) {
 		    break;
