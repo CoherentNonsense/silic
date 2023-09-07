@@ -24,6 +24,8 @@ void write_indent(CodegenContext* context) {
     }
 }
 
+static void generate_statement(CodegenContext* context, Stmt* statement);
+
 static void generate_type(CodegenContext* context, Type* type) {
     switch (type->kind) {
 	case TypeKind_Never: {
@@ -46,16 +48,32 @@ static void generate_type(CodegenContext* context, Type* type) {
     }
 }
 
+static void generate_block(CodegenContext* context, Block* block) {
+    write_literal(context, "{\n");
+    context->indent_level += 1;
+
+    for (int i = 0; i < block->statements.length; i++) {
+	Stmt* statement = dynarray_get(block->statements, i);
+	generate_statement(context, statement);
+    }
+
+    context->indent_level -= 1;
+    write_indent(context);
+    write_literal(context, "}");
+}
+
 static void generate_expression(CodegenContext* context, Expr* expression) {
     switch (expression->kind) {
 	case ExprKind_NumberLit: {
 	    write(context, expression->number_literal.span);
 	    break;
 	}
+
 	case ExprKind_StringLit: {
 	    write(context, expression->string_literal.span);
 	    break;
 	}
+
 	case ExprKind_FnCall: {
 	    FnCall* call = expression->fn_call;
 
@@ -71,6 +89,31 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    
 	    break;
 	}
+
+	case ExprKind_Ret: {
+	    write_literal(context, "return ");
+	    generate_expression(context, expression->ret);
+	    
+	    break;
+	}
+
+	case ExprKind_Block: {
+	    generate_block(context, expression->block);
+	    break;
+	}
+
+	case ExprKind_If: {
+	    write_literal(context, "if (");
+	    generate_expression(context, expression->if_expr->condition);
+	    write_literal(context, ") ");
+	    generate_block(context, expression->if_expr->then);
+	    if (expression->if_expr->otherwise != NULL) {
+		write_literal(context, " else ");
+		generate_expression(context, expression->if_expr->otherwise);
+	    }
+
+	    break;
+	}
 			
 	default: sil_panic("Unhandled expression");
     }
@@ -80,21 +123,12 @@ static void generate_statement(CodegenContext* context, Stmt* statement) {
     write_indent(context);
     if (statement->kind == StmtKind_Expr) {
 	generate_expression(context, statement->expression);
-	write_literal(context, ";\n");
+	if (statement->expression->kind != ExprKind_If) {
+	    write_literal(context, ";\n");
+	} else {
+	    write_literal(context, "\n");
+	}
     }
-}
-
-static void generate_block(CodegenContext* context, Block* block) {
-    write_literal(context, "{\n");
-    context->indent_level += 1;
-
-    for (int i = 0; i < block->statements.length; i++) {
-	Stmt* statement = dynarray_get(block->statements, i);
-	generate_statement(context, statement);
-    }
-
-    context->indent_level -= 1;
-    write_literal(context, "}");
 }
 
 static void generate_fn_signature(CodegenContext* context, Item* item) {
@@ -174,7 +208,7 @@ void c_codegen_generate(Module* module) {
         return;
     }
 
-    context.out_file = fopen("ir.c", "wb");
+    context.out_file = fopen("build/ir.c", "wb");
     if (context.out_file == NULL) {
 	    printf("Could not create ir\n");
 	    return;
@@ -186,6 +220,6 @@ void c_codegen_generate(Module* module) {
 
     fclose(context.out_file);
 
-    system("gcc -O1 ir.c -o app");
+    system("gcc -O1 build/ir.c -o app");
 }
 

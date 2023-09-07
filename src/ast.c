@@ -3,6 +3,7 @@
 #include "util.h"
 #include <stdio.h>
 
+static void print_statement(Stmt* statement);
 
 static void print_type(Type* type) {
     switch (type->kind) {
@@ -28,6 +29,15 @@ static void print_type(Type* type) {
 	    sil_panic("unhandled type %d", type->kind);
 	}
     }
+}
+
+static void print_block(Block* block) {
+    printf("{\n\n");
+    for (int i = 0; i < block->statements.length; i++) {
+	Stmt* statement = dynarray_get(block->statements, i);
+	print_statement(statement);
+    }
+    printf("}\n");
 }
 
 static void print_expression(Expr* expression) {
@@ -57,8 +67,7 @@ static void print_expression(Expr* expression) {
 	}
 
 	case ExprKind_Let: {
-	    printf("let\t" RESET);
-	    printf("name: ");
+	    printf("let\t" RESET "name: ");
 	    span_print(expression->let.name);
 	    printf("\ttype: ");
 	    print_type(expression->let.type);
@@ -68,15 +77,13 @@ static void print_expression(Expr* expression) {
 	}
 
 	case ExprKind_Symbol: {
-	    printf("symbol\t" RESET);
-	    printf("name: ");
+	    printf("symbol\t" RESET "name: ");
 	    span_println(expression->symbol);
 	    break;
 	}
 
 	case ExprKind_FnCall: {
-	    printf("fn call\t" RESET);
-	    printf("name: ");
+	    printf("fn call\t" RESET "name: ");
 	    span_println(expression->fn_call->name);
 	    printf("args: (\n");
 	    for (int i = 0; i < expression->fn_call->arguments.length; i++) {
@@ -88,6 +95,21 @@ static void print_expression(Expr* expression) {
 	    printf(")\n");
 	    break;
         }
+
+	case ExprKind_Block: {
+	    print_block(expression->block);
+	    break;
+	}
+
+	case ExprKind_If: {
+	    printf("if\n" RESET "condition: (\n");
+	    print_expression(expression->if_expr->condition);
+	    printf(")\nthen: ");
+	    print_block(expression->if_expr->then);
+	    printf("else: ");
+	    print_expression(expression->if_expr->otherwise);
+	    break;
+	}
 
 	default: {
 	    sil_panic("Unhandled expression %d", expression->kind);
@@ -103,13 +125,6 @@ static void print_statement(Stmt* statement) {
 	    printf("\n");
 	    break;
 	}
-    }
-}
-
-static void print_block(Block* block) {
-    for (int i = 0; i < block->statements.length; i++) {
-	Stmt* statement = dynarray_get(block->statements, i);
-	print_statement(statement);
     }
 }
 
@@ -133,9 +148,8 @@ static void print_fn_signature(FnSig* fn_sig) {
 static void print_fn_declaration(FnDecl* fn_decl) {
     print_fn_signature(fn_decl->signature);
 
-    printf("body: {\n\n");
+    printf("body: ");
     print_block(fn_decl->body);
-    printf("}");
 }
 
 static void print_item(Item* item) {

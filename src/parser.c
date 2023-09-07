@@ -64,6 +64,7 @@ static Type* parse_type(ParserContext* context) {
     return type;
 }
 
+static Stmt* parse_statement(ParserContext* context);
 static Expr* parse_expression(ParserContext* context);
 
 static void operator_precedence(TokenKind operator_kind, int* left, int* right) {
@@ -79,6 +80,22 @@ static void operator_precedence(TokenKind operator_kind, int* left, int* right) 
 
     *left = (precedence * 2) - 1;
     *right = precedence * 2;
+}
+
+static Block* parse_block(ParserContext* context) {
+    Block* block = malloc(sizeof(Block));
+    dynarray_init(block->statements);
+
+    expect_token(context, TokenKind_LBrace);
+    
+    while (current_token(context)->kind != TokenKind_RBrace) {
+	Stmt* statement = parse_statement(context);
+	dynarray_push(block->statements, statement);
+    }
+
+    consume_token(context);
+
+    return block;
 }
 
 static Expr* parse_primary_expression(ParserContext* context) {
@@ -162,6 +179,36 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    break;
 	}
 
+	case TokenKind_LBrace: {
+	    expression->kind = ExprKind_Block;
+	    expression->block = parse_block(context);
+
+	    break;
+	}
+
+	case TokenKind_KeywordIf: {
+	    consume_token(context);
+	    expression->kind = ExprKind_If;
+	    expression->if_expr = malloc(sizeof(If));
+	    expression->if_expr->condition = parse_expression(context);
+	    expression->if_expr->then = parse_block(context);
+	   
+	    // else (if) branch
+	    if (current_token(context)->kind == TokenKind_KeywordElse) {
+		consume_token(context);
+
+		Token* next_token = current_token(context);
+		if (next_token->kind != TokenKind_KeywordIf &&
+			next_token->kind != TokenKind_LBrace) {
+		    sil_panic("Expected 'if' or '{' after an else");
+		}
+
+		expression->if_expr->otherwise = parse_expression(context);
+	    }
+
+	    break;
+	}
+
 	default: {
 	    sil_panic("Expected expression");
 	}
@@ -231,22 +278,6 @@ static Stmt* parse_statement(ParserContext* context) {
 	}
     }
     return statement;
-}
-
-static Block* parse_block(ParserContext* context) {
-    Block* block = malloc(sizeof(Block));
-    dynarray_init(block->statements);
-
-    expect_token(context, TokenKind_LBrace);
-    
-    while (current_token(context)->kind != TokenKind_RBrace) {
-	Stmt* statement = parse_statement(context);
-	dynarray_push(block->statements, statement);
-    }
-
-    consume_token(context);
-
-    return block;
 }
 
 static FnSig* parse_fn_signature(ParserContext* context, Span* name) {

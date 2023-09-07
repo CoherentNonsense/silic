@@ -70,6 +70,12 @@ typedef struct Block {
     DynArray(Stmt*) statements;
 } Block;
 
+typedef struct If {
+    Expr* condition;
+    Block* then;
+    Expr* otherwise;
+} If;
+
 typedef enum BinOpKind {
     BinOpKind_Eq,
     BinOpKind_Add,
@@ -113,7 +119,8 @@ typedef struct Expr {
     union {
 	StringLit string_literal;
 	NumberLit number_literal;
-	Block block;
+	Block* block;
+	If* if_expr;
 	BinOp binary_operator;
 	Let let;
 	Expr* ret;
