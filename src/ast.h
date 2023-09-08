@@ -15,6 +15,7 @@ typedef struct Stmt Stmt;
 typedef struct Type Type;
 
 typedef enum TypeKind {
+    TypeKind_Void,
     TypeKind_Symbol,
     TypeKind_Int,
     TypeKind_Float,
@@ -53,6 +54,7 @@ typedef enum ExprKind {
     ExprKind_UnOp,
     ExprKind_BinOp,
     ExprKind_Let,
+    ExprKind_Match,
     ExprKind_Ret,
     ExprKind_Symbol,
     ExprKind_FnCall,
@@ -75,6 +77,16 @@ typedef struct If {
     Block* then;
     Expr* otherwise;
 } If;
+
+typedef struct MatchArm {
+    NumberLit* pattern;
+    Expr* then;
+} MatchArm;
+
+typedef struct Match {
+    Expr* condition;
+    DynArray(MatchArm*) arms;
+} Match;
 
 typedef enum BinOpKind {
     BinOpKind_Eq,
@@ -118,11 +130,12 @@ typedef struct Expr {
     Type type;
     union {
 	StringLit string_literal;
-	NumberLit number_literal;
+	NumberLit* number_literal;
 	Block* block;
 	If* if_expr;
+	Match* match;
 	BinOp binary_operator;
-	Let let;
+	Let* let;
 	Expr* ret;
 	Span symbol;
 	FnCall* fn_call;

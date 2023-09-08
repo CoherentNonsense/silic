@@ -28,6 +28,11 @@ static void generate_statement(CodegenContext* context, Stmt* statement);
 
 static void generate_type(CodegenContext* context, Type* type) {
     switch (type->kind) {
+	case TypeKind_Void: {
+	    write_literal(context, "void");
+	    break;
+	}
+
 	case TypeKind_Never: {
 	    write_literal(context, "void");
 	    break;
@@ -62,15 +67,24 @@ static void generate_block(CodegenContext* context, Block* block) {
     write_literal(context, "}");
 }
 
+static void generate_number_literal(CodegenContext* context, NumberLit* number_literal) {
+    write(context, number_literal->span);
+}
+
 static void generate_expression(CodegenContext* context, Expr* expression) {
     switch (expression->kind) {
 	case ExprKind_NumberLit: {
-	    write(context, expression->number_literal.span);
+	    generate_number_literal(context, expression->number_literal);
 	    break;
 	}
 
 	case ExprKind_StringLit: {
 	    write(context, expression->string_literal.span);
+	    break;
+	}
+
+	case ExprKind_Symbol: {
+	    write(context, expression->symbol);
 	    break;
 	}
 
@@ -87,6 +101,16 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 
 	    write_literal(context, ")");
 	    
+	    break;
+	}
+
+	case ExprKind_Let: {
+	    generate_type(context, expression->let->type);
+	    write_literal(context, " ");
+	    write(context, expression->let->name);
+	    write_literal(context, " = ");
+	    generate_expression(context, expression->let->value);
+
 	    break;
 	}
 
@@ -114,8 +138,34 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 
 	    break;
 	}
+
+	case ExprKind_Match: {
+	    Match* match = expression->match;
+	    write_literal(context, "switch (");
+	    generate_expression(context, expression->match->condition);
+	    write_literal(context, ") {\n");
+	    context->indent_level += 1;
+	    for (int i = 0; i < match->arms.length; i++) {
+		MatchArm* arm = dynarray_get(match->arms, i);
+		write_indent(context);
+		write_literal(context, "case ");
+		generate_number_literal(context, arm->pattern);
+		write_literal(context, ": ");
+		generate_expression(context, arm->then);
+		if (arm->then->kind != ExprKind_Block) {
+		    write_literal(context, "; break;");
+		} else {
+		    write_literal(context, " break;");
+		}
+		write_literal(context, "\n");
+	    }
+	    context->indent_level -= 1;
+	    write_indent(context);
+	    write_literal(context, "}");
+	    break;
+	}
 			
-	default: sil_panic("Unhandled expression");
+	default: sil_panic("Unhandled expression %d", expression->kind);
     }
 }
 
@@ -123,7 +173,8 @@ static void generate_statement(CodegenContext* context, Stmt* statement) {
     write_indent(context);
     if (statement->kind == StmtKind_Expr) {
 	generate_expression(context, statement->expression);
-	if (statement->expression->kind != ExprKind_If) {
+	if (statement->expression->kind != ExprKind_If &&
+		statement->expression->kind != ExprKind_Match) {
 	    write_literal(context, ";\n");
 	} else {
 	    write_literal(context, "\n");
@@ -164,6 +215,7 @@ static void generate_definition(CodegenContext* context, Item* item) {
 	    generate_fn_signature(context, item);
 	    write_literal(context, " ");
 	    generate_block(context, item->fn_declaration->body);
+	    write_literal(context, "\n\n");
 	    break;
 	
 	default: return;

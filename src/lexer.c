@@ -33,6 +33,7 @@ typedef enum LexerState {
     LexerState_Number,
     LexerState_String,
     LexerState_Dash,
+    LexerState_Equals,
     LexerState_Slash,
     LexerState_Comment,
     LexerState_MultilineComment,
@@ -75,6 +76,8 @@ static void end_token(LexerContext* context) {
             token->kind = TokenKind_KeywordExtern;
         } else if (token_compare_literal(token, "if")) {
             token->kind = TokenKind_KeywordIf;
+	} else if (token_compare_literal(token, "match")) {
+	    token->kind = TokenKind_KeywordMatch;
         } else if (token_compare_literal(token, "else")) {
             token->kind = TokenKind_KeywordElse;
         } else if (token_compare_literal(token, "true")) {
@@ -166,7 +169,7 @@ void lexer_lex(Module* module) {
                         break;
                     case '=':
                         begin_token(&context, TokenKind_Equals);
-                        end_token(&context);
+			context.state = LexerState_Equals;
                         break;
                     case '+':
                         begin_token(&context, TokenKind_Plus);
@@ -237,6 +240,22 @@ void lexer_lex(Module* module) {
                         break;
                 }
                 break;
+
+	    case LexerState_Equals:
+		switch (current_char) {
+		    case '>':
+			context.current_token->kind = TokenKind_FatArrow;
+			end_token(&context);
+			context.state = LexerState_Start;
+			break;
+		    default:
+			context.offset -= 1;
+			context.position.column -= 1;
+			end_token(&context);
+			context.state = LexerState_Start;
+			break;
+		}
+		break;
 
             case LexerState_Slash:
                 if (current_char == '*') {

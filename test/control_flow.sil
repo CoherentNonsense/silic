@@ -1,0 +1,30 @@
+extern fn puts(message: *u8) -> i32;
+
+fn main() -> i32 {
+    if_expr();
+    match_expr();
+
+    return 0;
+}
+
+fn if_expr() { 
+    let x: i32 = 0;
+    if x {
+	puts("If statements!");
+    } else if x {
+	puts("Are epic!");
+    } else {
+	puts("Weeeeee!");
+    };
+}
+
+fn match_expr() {
+    let x: i32 = 6;
+    match x {
+	0 => puts("x is 0"),
+	1 => puts("x is 1"),
+	6 => {
+	    puts("Weeee!");
+	}
+    };
+}

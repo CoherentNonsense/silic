@@ -7,6 +7,11 @@ static void print_statement(Stmt* statement);
 
 static void print_type(Type* type) {
     switch (type->kind) {
+	case TypeKind_Void: {
+	    printf(BOLDGREEN "void" RESET);
+	    break;
+	}
+
 	case TypeKind_Symbol: {
 	    printf(BOLDGREEN);
 	    span_print(type->symbol);
@@ -68,11 +73,16 @@ static void print_expression(Expr* expression) {
 
 	case ExprKind_Let: {
 	    printf("let\t" RESET "name: ");
-	    span_print(expression->let.name);
+	    span_print(expression->let->name);
 	    printf("\ttype: ");
-	    print_type(expression->let.type);
+	    print_type(expression->let->type);
 	    printf("\n");
-	    print_expression(expression->let.value);
+	    print_expression(expression->let->value);
+	    break;
+	}
+
+	case ExprKind_Match: {
+	    printf("match\n" RESET);
 	    break;
 	}
 

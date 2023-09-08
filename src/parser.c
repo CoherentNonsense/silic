@@ -25,7 +25,7 @@ static Token* consume_token(ParserContext* context) {
 static Token* expect_token(ParserContext* context, TokenKind kind) {
     Token* token = consume_token(context);
     if (token->kind != kind) {
-	sil_panic("Unexpected token: got %s. expected %s", token_string(token->kind), token_string(kind));
+	sil_panic("Unexpected token[%d:%d]: got %s. expected %s", token->position.line, token->position.column, token_string(token->kind), token_string(kind));
     }
 
     return token;
@@ -98,6 +98,15 @@ static Block* parse_block(ParserContext* context) {
     return block;
 }
 
+static NumberLit* parse_number_literal(ParserContext* context) {
+    NumberLit* lit = malloc(sizeof(NumberLit));
+
+    Token* token = consume_token(context);
+    lit->span = token->span;
+
+    return lit;
+}
+
 static Expr* parse_primary_expression(ParserContext* context) {
     Expr* expression = malloc(sizeof(Expr)); 
 
@@ -113,10 +122,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	case TokenKind_NumberLiteral: {
 	    expression->kind = ExprKind_NumberLit;
-
-	    Token* token = consume_token(context);
-	    expression->number_literal.span = token->span;
-
+	    expression->number_literal = parse_number_literal(context);
 	    break;
 	}
 
@@ -133,15 +139,16 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    consume_token(context);
 
 	    Token* name_token = expect_token(context, TokenKind_Symbol);
-	    expression->let.name = name_token->span;
+	    expression->let = malloc(sizeof(Let));
+	    expression->let->name = name_token->span;
 
 	    expect_token(context, TokenKind_Colon);
 
-	    expression->let.type = parse_type(context);
+	    expression->let->type = parse_type(context);
 
 	    expect_token(context, TokenKind_Equals);
 
-	    expression->let.value = parse_expression(context);
+	    expression->let->value = parse_expression(context);
 
 	    break;
 	}
@@ -209,8 +216,36 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    break;
 	}
 
+	case TokenKind_KeywordMatch: {
+	    consume_token(context);
+	    expression->kind = ExprKind_Match;
+	    expression->match = malloc(sizeof(Match));
+	    dynarray_init(expression->match->arms);
+
+	    expression->match->condition = parse_expression(context);
+
+	    expect_token(context, TokenKind_LBrace);
+	   
+	    while (current_token(context)->kind != TokenKind_RBrace) {
+		MatchArm* arm = malloc(sizeof(MatchArm));
+		arm->pattern = parse_number_literal(context);
+		expect_token(context, TokenKind_FatArrow);
+		arm->then = parse_expression(context);
+		dynarray_push(expression->match->arms, arm);
+
+		if (current_token(context)->kind != TokenKind_RBrace) {
+		    expect_token(context, TokenKind_Comma);
+		}
+
+	    }
+
+	    expect_token(context, TokenKind_RBrace);
+
+	    break;
+	}
+
 	default: {
-	    sil_panic("Expected expression");
+	    sil_panic("Expected expression. Got %s", token_string(current_token(context)->kind));
 	}
     }
 
@@ -271,7 +306,7 @@ static Stmt* parse_statement(ParserContext* context) {
 	default: {
 	    statement->kind = StmtKind_Expr;
 	    statement->expression = parse_expression(context);
-
+	   
 	    expect_token(context, TokenKind_Semicolon);
 
 	    break;
@@ -316,7 +351,9 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
 	consume_token(context);
 	fn_sig->return_type = parse_type(context);
     } else {
-	fn_sig->return_type = NULL;
+	Type* void_type = malloc(sizeof(Type));
+	void_type->kind = TypeKind_Void;
+	fn_sig->return_type = void_type;
     }
 
     return fn_sig;
