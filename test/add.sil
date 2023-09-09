@@ -1,7 +1,4 @@
 fn add(first: i32, second: i32) -> i32 {
-    let third: i32 = first + second;
-
-    print();
-
-    return third;
+    return first + second;
 }
+

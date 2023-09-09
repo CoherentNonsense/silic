@@ -6,7 +6,7 @@ A low-level programming language with an emphasis on simplicity for embedded sys
 
 
 `hello_world.sil`
-```
+```zig
 extern const puts = (message: *u8) -> i32;
 
 fn main() -> i32 {
@@ -17,7 +17,7 @@ fn main() -> i32 {
 ```
 
 `blink_led.sil`
-```
+```zig
 const stm32 = import("stm32-hal");
 
 fn wait() {
