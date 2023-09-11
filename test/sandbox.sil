@@ -1,0 +1,62 @@
+// Modules
+import std from std:
+import { jot } from coherentnonsense;
+import { HeapAllocator } from std:allocators;
+
+std:print "Hello, world!";
+std.print "Hello, world!"; // just use .?
+std:do_something(std:SOME_CONSTANT, 3);
+
+// Functions as expression
+fn add(a: i32, b: i32) -> i32 = a + b;
+fn sub(a: i32, b: i32) -> i32 = a - b;
+fn double(a: i32) -> i32 = a * 2;
+fn half(a: i32) -> i32 = a / 2;
+
+// Omit parenthesis (and generic braces) if parameter length is 1
+double 2;
+add(double 2, half 10);
+
+// Generics/Allocator (Gets simple type information. No traits or bounds)
+struct AllocatorVTable T {
+    alloc: *fn(isize) -> [T],
+    free: *fn([T]),
+    realloc: *fn([T]) -> [T],
+}
+
+struct DynArray(T, U) // Consistent with the C macros
+struct DynArray<T, U> // Multiple generic types
+struct DynArray T {
+    allocator: Allocator T,
+    heap: [T],
+    length: isize,
+}
+
+// Methods (Rust impls or embed directly in struct?)
+impl DynArray T {
+    fn push(self: Self, element: T) {
+	self.ensure_capacity(1);
+	self.heap[self.length] = element;
+    }
+}
+
+// Usage
+let array: DynArray<*i32> = undefined;
+let array: DynArray(*i32) = undefined; // consistent with the C macros
+let array: DynArray *i32 = undefined;
+
+array.push(10);
+array.push 10;
+
+// Ambiguous parsing
+double_it<i32> 2; // the best, but same as (add < i32) > 2
+<i32>double_it 2  // i think that's unambiguous. don't know if i like it tho
+double_it(i32)(2); // looks like a double function call
+double_it i32 2;   // oh no, this is bad
+double_it_i32 2;  // maybe no generic functions and more verbose names
+double_it:<i32> 2 // the rust solution? it looks better with : rather than .
+
+// C usage (using macros)
+DynArray(int*) array;
+dynarray_push(array, 10);
+
