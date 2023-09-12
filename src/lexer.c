@@ -86,7 +86,9 @@ static void end_token(LexerContext* context) {
             token->kind = TokenKind_KeywordFalse;
         } else if (token_compare_literal(token, "struct")) {
             token->kind = TokenKind_KeywordStruct;
-        }
+        } else if (token_compare_literal(token, "pub")) {
+	    token->kind = TokenKind_KeywordPub;
+	}
     }
 }
 

@@ -134,7 +134,7 @@ typedef struct Expr {
 	Block* block;
 	If* if_expr;
 	Match* match;
-	BinOp binary_operator;
+	BinOp* binary_operator;
 	Let* let;
 	Expr* ret;
 	Span symbol;
@@ -162,9 +162,14 @@ typedef struct Stmt {
 // Item //
 // ---- //
 typedef enum ItemKind {
-    ItemKind_FnDecl,
+    ItemKind_FnDef,
     ItemKind_ExternFn,
+    ItemKind_StructDef,
 } ItemKind;
+
+typedef struct Visibilty {
+    bool is_pub;
+} Visibility;
 
 typedef struct FnParam {
     Span name;
@@ -176,21 +181,34 @@ typedef struct FnSig {
     Type* return_type;
 } FnSig;
 
-typedef struct FnDecl {
+typedef struct FnDef {
     FnSig* signature;
     Block* body;
-} FnDecl;
+} FnDef;
 
 typedef struct ExternFn {
     FnSig* signature;
 } ExternFn;
 
+typedef struct StructField {
+    Visibility visibility;
+    Span name;
+    Type* type;
+} StructField;
+
+typedef struct StructDef {
+    Span name;
+    DynArray(StructField*) fields;
+} StructDef;
+
 typedef struct Item {
+    Visibility visibility;
     ItemKind kind;
     Span name;
     union {
-	FnDecl* fn_declaration;
+	FnDef* fn_definition;
 	ExternFn* extern_fn;
+	StructDef* struct_definition;
     };
 } Item;
 

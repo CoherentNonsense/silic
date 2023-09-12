@@ -1,0 +1,5 @@
+pub struct Person {
+    id: usize,
+    pub age: u32,
+    pub name: *i8,
+}

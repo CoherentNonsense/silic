@@ -21,13 +21,14 @@
 
 
 static void print_usage(char* command) {
-    fprintf(stderr, "\nUsage: %s <code>.sil\n\nOther Options:\n--version\t\tprints version\n--output <outfile>\tsets output file\n\n", command);
+    fprintf(stderr, "\nUsage: %s <code>.sil\n\nOther Options:\n--version\t\tprints version\n--output <outfile>\tsets output file\n--build\tbuild the C(IR)\n\n", command);
 }
 
 int main(int argc, char** argv) {
     char* arg0 = argv[0];
     char* in_file_path = 0;
     char* out_file_path = "output";
+    bool build = false;
 
     for (int i = 1; i < argc; i++) {
         char* arg = argv[i];
@@ -39,6 +40,8 @@ int main(int argc, char** argv) {
             } else if(strcmp(arg, "--output") == 0) {
                 i += 1;
                 out_file_path = argv[i];
+	    } else if (strcmp(arg, "--build") == 0) {
+		build = true;
             } else {
                 print_usage(arg0);
                 return EXIT_FAILURE;
@@ -67,7 +70,7 @@ int main(int argc, char** argv) {
 
     Span source = (Span){ buffer, length };
 
-    compiler_compile_module(source);
+    compiler_compile_module(source, build);
 
     free(buffer);
 

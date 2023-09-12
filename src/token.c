@@ -31,6 +31,8 @@ char* token_string(TokenKind kind) {
 	case TokenKind_KeywordMatch: return "Keyword(match)";
         case TokenKind_KeywordReturn: return "Keyword(return)";
         case TokenKind_KeywordExtern: return "Keyword(extern)";
+	case TokenKind_KeywordStruct: return "Keyword(struct)";
+	case TokenKind_KeywordPub: return "Keyword(pub)";
         default: return "Unknown Token";
     }
 }

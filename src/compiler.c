@@ -7,9 +7,10 @@
 #include "util.h"
 
 
-Module* compiler_compile_module(Span source) {
+Module* compiler_compile_module(Span source, bool build) {
     Module* module = malloc(sizeof(Module));
     module->source = source;
+    module->build = build;
 
 
     // ------ //

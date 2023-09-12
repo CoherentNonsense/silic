@@ -276,18 +276,19 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 	Expr* right_expression = parse_expression_prec(context, right);
 	Expr* operator = malloc(sizeof(Expr));
 	operator->kind = ExprKind_BinOp;
+	operator->binary_operator = malloc(sizeof(BinOp));
 
 	switch (operator_token->kind) {
-	    case TokenKind_Equals: operator->binary_operator.kind = BinOpKind_Eq; break;
-	    case TokenKind_Plus: operator->binary_operator.kind = BinOpKind_Add; break;
-	    case TokenKind_Dash: operator->binary_operator.kind = BinOpKind_Sub; break;
-	    case TokenKind_Star: operator->binary_operator.kind = BinOpKind_Mul; break;
-	    case TokenKind_Slash: operator->binary_operator.kind = BinOpKind_Div; break;
+	    case TokenKind_Equals: operator->binary_operator->kind = BinOpKind_Eq; break;
+	    case TokenKind_Plus: operator->binary_operator->kind = BinOpKind_Add; break;
+	    case TokenKind_Dash: operator->binary_operator->kind = BinOpKind_Sub; break;
+	    case TokenKind_Star: operator->binary_operator->kind = BinOpKind_Mul; break;
+	    case TokenKind_Slash: operator->binary_operator->kind = BinOpKind_Div; break;
 	    default: sil_panic("Unhandled operator");
 	}
 
-	operator->binary_operator.left = left_expression;
-	operator->binary_operator.right = right_expression;
+	operator->binary_operator->left = left_expression;
+	operator->binary_operator->right = right_expression;
 
 	left_expression = operator;
     }
@@ -359,8 +360,8 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
     return fn_sig;
 }
 
-static FnDecl* parse_fn_declaration(ParserContext* context, Span* name) {
-    FnDecl* fn_decl = malloc(sizeof(FnDecl));
+static FnDef* parse_fn_declaration(ParserContext* context, Span* name) {
+    FnDef* fn_decl = malloc(sizeof(FnDef));
 
     fn_decl->signature = parse_fn_signature(context, name);
     fn_decl->body = parse_block(context);
@@ -371,10 +372,17 @@ static FnDecl* parse_fn_declaration(ParserContext* context, Span* name) {
 static Item* parse_item(ParserContext* context) {
     Item* item = malloc(sizeof(Item));
 
+    if (current_token(context)->kind == TokenKind_KeywordPub) {
+	consume_token(context);
+	item->visibility.is_pub = true;
+    } else {
+	item->visibility.is_pub = false;
+    }
+
     switch (current_token(context)->kind) {
 	case TokenKind_KeywordFn: {
-	    item->kind = ItemKind_FnDecl;
-	    item->fn_declaration = parse_fn_declaration(context, &item->name);
+	    item->kind = ItemKind_FnDef;
+	    item->fn_definition = parse_fn_declaration(context, &item->name);
 	    break;
 	}
 
@@ -386,7 +394,7 @@ static Item* parse_item(ParserContext* context) {
 	    expect_token(context, TokenKind_Semicolon);
 	    break;
 	}
-
+	
 	default: {
 	    sil_panic("Expected item, got %s", token_string(current_token(context)->kind));
 	}

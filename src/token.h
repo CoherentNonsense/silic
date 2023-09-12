@@ -41,6 +41,7 @@ typedef enum TokenKind {
     TokenKind_KeywordTrue,
     TokenKind_KeywordFalse,
     TokenKind_KeywordStruct,
+    TokenKind_KeywordPub,
 } TokenKind;
 
 typedef struct TextPosition {

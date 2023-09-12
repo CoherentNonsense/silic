@@ -11,6 +11,7 @@ typedef struct ModuleError {
 } ModuleError;
 
 typedef struct Module {
+    bool build;
     Span path;
     Span source;
     DynArray(Token) token_list;

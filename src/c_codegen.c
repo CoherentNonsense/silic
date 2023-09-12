@@ -25,6 +25,7 @@ void write_indent(CodegenContext* context) {
 }
 
 static void generate_statement(CodegenContext* context, Stmt* statement);
+static void generate_expression(CodegenContext* context, Expr* expression);
 
 static void generate_type(CodegenContext* context, Type* type) {
     switch (type->kind) {
@@ -71,6 +72,22 @@ static void generate_number_literal(CodegenContext* context, NumberLit* number_l
     write(context, number_literal->span);
 }
 
+static void generate_binop(CodegenContext* context, BinOp* binop) {
+    write_literal(context, "SILICPRELUDE_");
+    switch (binop->kind) {
+	case BinOpKind_Add: write_literal(context, "addi32("); break;
+	case BinOpKind_Sub: write_literal(context, "subi32("); break;
+	case BinOpKind_Mul: write_literal(context, "muli32("); break;
+	case BinOpKind_Div: write_literal(context, "divi32("); break;
+	default: sil_panic("Unhandled binary operator");
+    }
+
+    generate_expression(context, binop->left);
+    write_literal(context, ", ");
+    generate_expression(context, binop->right);
+    write_literal(context, ")");
+}
+
 static void generate_expression(CodegenContext* context, Expr* expression) {
     switch (expression->kind) {
 	case ExprKind_NumberLit: {
@@ -97,6 +114,9 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    for (int i = 0; i < call->arguments.length; i++) {
 		Expr* arg = dynarray_get(call->arguments, i);
 		generate_expression(context, arg);
+		if (i < call->arguments.length - 1) {
+		    write_literal(context, ", ");
+		}
 	    }
 
 	    write_literal(context, ")");
@@ -125,6 +145,8 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    generate_block(context, expression->block);
 	    break;
 	}
+
+	case ExprKind_BinOp: generate_binop(context, expression->binary_operator); break;
 
 	case ExprKind_If: {
 	    write_literal(context, "if (");
@@ -184,8 +206,8 @@ static void generate_statement(CodegenContext* context, Stmt* statement) {
 
 static void generate_fn_signature(CodegenContext* context, Item* item) {
     FnSig* signature;
-    if (item->kind == ItemKind_FnDecl) {
-	signature = item->fn_declaration->signature;
+    if (item->kind == ItemKind_FnDef) {
+	signature = item->fn_definition->signature;
     } else if (item->kind == ItemKind_ExternFn) {
 	signature = item->extern_fn->signature;
     } else {
@@ -204,6 +226,9 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
 	generate_type(context, parameter->type);
 	write_literal(context, " ");
 	write(context, parameter->name);
+	if (i < signature->parameters.length - 1) {
+	    write_literal(context, ", ");
+	}
     }
 
     write_literal(context, ")");
@@ -211,10 +236,13 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
 
 static void generate_definition(CodegenContext* context, Item* item) {
     switch (item->kind) {
-	case ItemKind_FnDecl:
+	case ItemKind_FnDef:
+	    if (!item->visibility.is_pub) {
+		write_literal(context, "static ");
+	    }
 	    generate_fn_signature(context, item);
 	    write_literal(context, " ");
-	    generate_block(context, item->fn_declaration->body);
+	    generate_block(context, item->fn_definition->body);
 	    write_literal(context, "\n\n");
 	    break;
 	
@@ -224,7 +252,10 @@ static void generate_definition(CodegenContext* context, Item* item) {
 
 static void generate_forward_declaration(CodegenContext* context, Item* item) {
     switch (item->kind) {
-	case ItemKind_FnDecl:
+	case ItemKind_FnDef:
+	    if (!item->visibility.is_pub) {
+		write_literal(context, "static ");
+	    }
 	case ItemKind_ExternFn:
 	    generate_fn_signature(context, item);
 	    write_literal(context, ";\n");
@@ -272,6 +303,8 @@ void c_codegen_generate(Module* module) {
 
     fclose(context.out_file);
 
-    system("gcc -O1 build/ir.c -o app");
+    if (module->build) {
+	system("gcc -O1 build/ir.c -o app");
+    }
 }
 

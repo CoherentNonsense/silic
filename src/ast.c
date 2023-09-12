@@ -66,8 +66,8 @@ static void print_expression(Expr* expression) {
 
 	case ExprKind_BinOp: {
 	    printf("binop\n" RESET);
-	    print_expression(expression->binary_operator.left);
-	    print_expression(expression->binary_operator.right);
+	    print_expression(expression->binary_operator->left);
+	    print_expression(expression->binary_operator->right);
 	    break;
 	}
 
@@ -116,6 +116,9 @@ static void print_expression(Expr* expression) {
 	    print_expression(expression->if_expr->condition);
 	    printf(")\nthen: ");
 	    print_block(expression->if_expr->then);
+	    if (expression->if_expr->otherwise == NULL) {
+		break;
+	    }
 	    printf("else: ");
 	    print_expression(expression->if_expr->otherwise);
 	    break;
@@ -155,7 +158,7 @@ static void print_fn_signature(FnSig* fn_sig) {
     printf("\n");
 }
 
-static void print_fn_declaration(FnDecl* fn_decl) {
+static void print_fn_definition(FnDef* fn_decl) {
     print_fn_signature(fn_decl->signature);
 
     printf("body: ");
@@ -166,10 +169,10 @@ static void print_item(Item* item) {
     printf(BOLDMAGENTA "~ Item " RESET);
 
     switch (item->kind) {
-	case ItemKind_FnDecl: {
+	case ItemKind_FnDef: {
 	    printf(YELLOW "function declaration\n" RESET "name: ");
 	    span_println(item->name);
-	    print_fn_declaration(item->fn_declaration);
+	    print_fn_definition(item->fn_definition);
 	    break;
 	}
 
@@ -177,6 +180,10 @@ static void print_item(Item* item) {
 	    printf(YELLOW "extern function\n" RESET "name: ");
 	    span_println(item->name);
 	    print_fn_signature(item->extern_fn->signature);
+	    break;
+	}
+
+	case ItemKind_StructDef: {
 	    break;
 	}
     }
