@@ -153,9 +153,9 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    generate_expression(context, expression->if_expr->condition);
 	    write_literal(context, ") ");
 	    generate_block(context, expression->if_expr->then);
-	    if (expression->if_expr->otherwise != NULL) {
+	    if (expression->if_expr->otherwise.type == Yes) {
 		write_literal(context, " else ");
-		generate_expression(context, expression->if_expr->otherwise);
+		generate_expression(context, expression->if_expr->otherwise.value);
 	    }
 
 	    break;
@@ -224,7 +224,7 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
     for (int i = 0; i < signature->parameters.length; i++) {
 	FnParam* parameter = dynarray_get(signature->parameters, i);
 	generate_type(context, parameter->type);
-	write_literal(context, " ");
+	write_literal(context, " const ");
 	write(context, parameter->name);
 	if (i < signature->parameters.length - 1) {
 	    write_literal(context, ", ");

@@ -1,11 +1,17 @@
 // Modules
-import std from std:
-import { jot } from coherentnonsense;
-import { HeapAllocator } from std:allocators;
+const std = import("std"); // standard library
+const math = ("./add.sil"); // relative path
+const { HeapAllocator } = import("std").allocators; // destructuring
 
-std:print "Hello, world!";
-std.print "Hello, world!"; // just use .?
-std:do_something(std:SOME_CONSTANT, 3);
+std.print "Hello, world!";
+let x = math.add(2, 10);
+let allocator = HeapAllocator<u8>.init();
+
+// Pointers
+let mut x: i32 = 0;
+let x: *i32 = &x;
+let x: *mut i32 = &x;
+x.* = 10;
 
 // Functions as expression
 fn add(a: i32, b: i32) -> i32 = a + b;

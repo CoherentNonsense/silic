@@ -7,7 +7,7 @@
 #include "dynarray.h"
 
 typedef struct ModuleError {
-    char* message;
+    Span message;
 } ModuleError;
 
 typedef struct Module {
@@ -21,5 +21,7 @@ typedef struct Module {
 
     DynArray(ModuleError) errors;
 } Module;
+
+void module_add_error(Module* module, Span error);
 
 #endif //!MODULE_H

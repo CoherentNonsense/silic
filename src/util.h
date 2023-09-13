@@ -20,7 +20,7 @@
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
 typedef struct Result {
-    const enum {
+    enum {
         Ok,
         Error,
     } type;
@@ -36,6 +36,17 @@ void sil_panic(const char* format, ...)
     __attribute__((cold))
     __attribute__((format(printf, 1, 2)))
     __attribute__((noreturn));
+
+
+// Maybe
+#define Maybe(T) \
+    struct { \
+	enum { \
+	    Yes, \
+	    No, \
+	} type; \
+	T value; \
+    }
 
 #endif // !UTIL_H
 

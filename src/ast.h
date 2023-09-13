@@ -3,6 +3,7 @@
 
 #include "span.h"
 #include "dynarray.h"
+#include "util.h"
 #include <stdbool.h>
 
 typedef struct Expr Expr;
@@ -75,7 +76,7 @@ typedef struct Block {
 typedef struct If {
     Expr* condition;
     Block* then;
-    Expr* otherwise;
+    Maybe(Expr*) otherwise;
 } If;
 
 typedef struct MatchArm {

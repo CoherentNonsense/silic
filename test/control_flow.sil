@@ -15,7 +15,7 @@ fn if_expr() {
 	puts("Are epic!");
     } else {
 	puts("Weeeeee!");
-    };
+    }
 }
 
 fn match_expr() {
@@ -26,5 +26,5 @@ fn match_expr() {
 	6 => {
 	    puts("Weeee!");
 	}
-    };
+    }
 }

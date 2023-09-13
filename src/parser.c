@@ -210,7 +210,10 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		    sil_panic("Expected 'if' or '{' after an else");
 		}
 
-		expression->if_expr->otherwise = parse_expression(context);
+		expression->if_expr->otherwise.type = Yes;
+		expression->if_expr->otherwise.value = parse_expression(context);
+	    } else {
+		expression->if_expr->otherwise.type = No;
 	    }
 
 	    break;
@@ -308,7 +311,9 @@ static Stmt* parse_statement(ParserContext* context) {
 	    statement->kind = StmtKind_Expr;
 	    statement->expression = parse_expression(context);
 	   
-	    expect_token(context, TokenKind_Semicolon);
+	    if (!parser_should_remove_statement_semicolon(statement->expression)) {
+		expect_token(context, TokenKind_Semicolon);
+	    }
 
 	    break;
 	}
@@ -421,4 +426,8 @@ void parser_parse(Module* module) {
     context.token_index = 0;
 
     module->ast = parse_root(&context);
+}
+
+bool parser_should_remove_statement_semicolon(Expr* expression) {
+    return expression->kind == ExprKind_If || expression->kind == ExprKind_Match;
 }
