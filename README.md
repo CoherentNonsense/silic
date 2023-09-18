@@ -7,13 +7,13 @@ A low-level programming language with an emphasis on simplicity and expressivity
 
 `hello_world.sil`
 ```zig
-extern const puts = (message: *u8) -> i32;
+extern fn puts(message: *u8) -> i32;
 
 fn main() -> i32 {
     puts("Hello, world!\n");
 
     return 0;
-};
+}
 ```
 
 `blink_led.sil`
@@ -24,7 +24,7 @@ fn wait() {
     for i in [0..2000000] volatile {
         asm nop;
     }
-};
+}
 
 fn main() -> ! { 
   stm32.enable_port_clock(stm32.PORT_C);
@@ -34,5 +34,5 @@ fn main() -> ! {
     stm32.toggle_led();
     wait();
   }
-};
+}
 ```
