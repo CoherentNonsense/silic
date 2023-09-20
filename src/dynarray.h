@@ -54,6 +54,8 @@ void dynarray_push__polymorphic(
 #define dynarray_get_ref(array, index) \
     ((__typeof__((array).data))((array).data + (index)))
 
-#define dynarray_get(array, index) *dynarray_get_ref(array, index)
+#define dynarray_get(array, index) *dynarray_get_ref((array), index)
+
+#define dynarray_last_ref(array) dynarray_get_ref((array), (array).length - 1)
 
 #endif // !LIST_H

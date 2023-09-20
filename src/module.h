@@ -17,6 +17,7 @@ typedef struct Module {
     DynArray(Token) token_list;
     AstRoot* ast;
 
+    // TODO: figure out generics for this
     HashMap functions;
 
     DynArray(ModuleError) errors;

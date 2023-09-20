@@ -20,7 +20,7 @@ void map_init(HashMap* map) {
     dynarray_init(map->entries);
 }
 
-void map_delete(HashMap* map) {
+void map_deinit(HashMap* map) {
     dynarray_deinit(map->entries);
 }
 
@@ -55,19 +55,19 @@ void map_insert(HashMap* map, Span key, void* value) {
     sil_panic("Hashmap::map_insert trying to insert into full hashmap");
 }
 
-void* map_get(HashMap* map, Span key) {
+MaybeAny map_get(HashMap* map, Span key) {
     size_t start_index = hash_function(key);
     for (int i = 0; i < map->entries.capacity; i++) {
         size_t index = (start_index + i) % map->entries.capacity;
         Entry* entry = dynarray_get_ref(map->entries, index);
         if (entry->used and strncmp(key.start, entry->key.start, key.length)) {
-            return entry->value;
+            return (MaybeAny){ Yes, entry->value };
         }
     }
 
-    return NULL;
+    return (MaybeAny){ No };
 }
 
-int map_has(HashMap* map, Span key) {
-    return map_get(map, key) != NULL;
+bool map_has(HashMap* map, Span key) {
+    return map_get(map, key).type == Yes;
 }

@@ -17,7 +17,6 @@ typedef struct Type Type;
 
 typedef enum TypeKind {
     TypeKind_Void,
-    TypeKind_Symbol,
     TypeKind_Int,
     TypeKind_Float,
     TypeKind_Ptr,
@@ -25,9 +24,14 @@ typedef enum TypeKind {
     TypeKind_Never,
 } TypeKind;
 
-typedef struct Int {
+typedef struct Integer {
     bool is_signed;
-} Int;
+    uint64_t value;
+} Integer;
+
+typedef struct Decimal {
+    double value;
+} Decimal;
 
 typedef struct Ptr {
     Type* to;
@@ -36,10 +40,11 @@ typedef struct Ptr {
 
 typedef struct Type {
     TypeKind kind;
-    Span symbol;
-    bool is_mut;
     union {
+	Span symbol;
 	Ptr ptr;
+	Integer integer;
+	Decimal decimal;
     };
 } Type;
 
