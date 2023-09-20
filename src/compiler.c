@@ -3,6 +3,7 @@
 #include "token.h"
 #include "lexer.h"
 #include "parser.h"
+#include "analyzer.h"
 #include "c_codegen.h"
 #include "util.h"
 
@@ -39,6 +40,7 @@ Module* compiler_compile_module(Span source, bool build) {
     // --------- //
     // Analyzing //
     printf(BOLDWHITE "\nAnalyzing AST...\n" RESET);
+    analyzer_analyze(module);
     printf(BOLDWHITE "Analyzed Ast.\n" RESET);
 
 

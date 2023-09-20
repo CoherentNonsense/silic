@@ -6,12 +6,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 #define DynArray(type) \
     struct { \
 	size_t length; \
 	size_t capacity; \
 	type* data; \
     }
+
+typedef DynArray(void) DynArrayVoid;
 
 // init
 #define dynarray_init(array) array = (__typeof__(array)){0}
@@ -21,31 +24,31 @@
 
 // resize
 void dynarray_resize__polymorphic(
-    void* const array,
+    DynArrayVoid* const array,
     size_t const data_size,
     size_t const new_capacity
 );
 #define dynarray_resize(array, new_capacity) \
-    dynarray_resize__polymorphic(&(array), sizeof(*(array).data), new_capacity)
+    dynarray_resize__polymorphic((DynArrayVoid*)&(array), sizeof(*(array).data), new_capacity)
 
 // reserve
 void dynarray_reserve__polymorphic(
-    void* const array,
+    DynArrayVoid* const array,
     size_t const data_size,
     size_t const n
 );
 #define dynarray_reserve(array, n) \
-    dynarray_reserve__polymorphic(&(array), sizeof(*(array).data), n)
+    dynarray_reserve__polymorphic((DynArrayVoid*)&(array), sizeof(*(array).data), n)
 
 // push
 void dynarray_push__polymorphic(
-    void* const array,
+    DynArrayVoid* const array,
     size_t const data_size,
     void const* const element
 );
 #define dynarray_push(array, element) do { \
 	__typeof__(*(array).data) temp = (element); \
-	dynarray_push__polymorphic(&(array), sizeof(*(array).data), &temp); \
+	dynarray_push__polymorphic((DynArrayVoid*)&(array), sizeof(*(array).data), &temp); \
     } while(0)
 
 #define dynarray_get_ref(array, index) \

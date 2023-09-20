@@ -16,6 +16,10 @@ static size_t hash_function(Span string) {
     return h;
 }
 
+void map_init(HashMap* map) {
+    dynarray_init(map->entries);
+}
+
 void map_delete(HashMap* map) {
     dynarray_deinit(map->entries);
 }

@@ -7,6 +7,7 @@
 
 typedef struct CodegenContext {
     FILE* out_file;
+    Module* module;
     size_t indent_level;
 } CodegenContext;
 
@@ -250,26 +251,18 @@ static void generate_definition(CodegenContext* context, Item* item) {
     }
 }
 
-static void generate_forward_declaration(CodegenContext* context, Item* item) {
-    switch (item->kind) {
-	case ItemKind_FnDef:
-	    if (!item->visibility.is_pub) {
-		write_literal(context, "static ");
-	    }
-	case ItemKind_ExternFn:
-	    generate_fn_signature(context, item);
-	    write_literal(context, ";\n");
-	    break;
-    
-	default: return;
-    }
+static void generate_forward_declarations(CodegenContext* context) {
+    map_iterate(context->module->functions, Item* item, {
+	if (item->kind == ItemKind_FnDef && !item->visibility.is_pub) {
+	    write_literal(context, "static ");
+	}
+	generate_fn_signature(context, item);
+	write_literal(context, ";\n");
+    });
 }
 
 static void generate_ast(CodegenContext* context, AstRoot* ast) {
-    for (int i = 0; i < ast->items.length; i++) {
-        Item* item = dynarray_get(ast->items, i);
-        generate_forward_declaration(context, item);
-    }
+    generate_forward_declarations(context);
 
     write_literal(context, "\n");
 
@@ -282,6 +275,7 @@ static void generate_ast(CodegenContext* context, AstRoot* ast) {
 void c_codegen_generate(Module* module) {
     CodegenContext context;
     context.indent_level = 0;
+    context.module = module;
 
     char* prelude_text;
     int prelude_length;

@@ -4,6 +4,6 @@
 #include "module.h"
 
 
-void analyzer_run(Module* module);
+void analyzer_analyze(Module* module);
 
 #endif //!ANALYZER_H
