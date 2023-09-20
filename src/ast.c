@@ -116,11 +116,11 @@ static void print_expression(Expr* expression) {
 	    print_expression(expression->if_expr->condition);
 	    printf(")\nthen: ");
 	    print_block(expression->if_expr->then);
-	    if (expression->if_expr->otherwise == NULL) {
+	    if (expression->if_expr->otherwise.type == No) {
 		break;
 	    }
 	    printf("else: ");
-	    print_expression(expression->if_expr->otherwise);
+	    print_expression(expression->if_expr->otherwise.value);
 	    break;
 	}
 
@@ -135,7 +135,6 @@ static void print_statement(Stmt* statement) {
 	case StmtKind_Expr: {
 	    printf(BOLDWHITE "Expression Statement\n" RESET);
 	    print_expression(statement->expression);
-	    printf("\n");
 	    break;
 	}
     }

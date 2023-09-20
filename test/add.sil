@@ -3,7 +3,7 @@ extern fn puts(message: *u8) -> i32;
 pub fn main() -> i32 {
     if (add(1, 2) - 1) {
 	puts("WEEEE!");
-    };
+    }
 
     return 0;
 }

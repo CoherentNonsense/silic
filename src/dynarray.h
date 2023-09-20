@@ -13,45 +13,44 @@
 	type* data; \
     }
 
-#define dynarray_init(arr) arr = (__typeof__(arr)){0}
+// init
+#define dynarray_init(array) array = (__typeof__(array)){0}
 
-#define dynarray_deinit(arr) free((arr).data)
+// deinit
+#define dynarray_deinit(array) free((array).data)
 
-#define dynarray_resize(arr, new_capacity) \
-    { \
-	(arr).capacity = new_capacity; \
-	if ((arr).length > (arr).capacity) { \
-	    (arr).length = (arr).capacity; \
-	} \
-	(arr).data = realloc((arr).data, sizeof(*((arr).data)) * (arr).capacity); \
-    }
+// resize
+void dynarray_resize__polymorphic(
+    void* const array,
+    size_t const data_size,
+    size_t const new_capacity
+);
+#define dynarray_resize(array, new_capacity) \
+    dynarray_resize__polymorphic(&(array), sizeof(*(array).data), new_capacity)
 
-#define dynarray_reserve(arr, n) \
-    { \
-	(arr).length += n; \
-	if ((arr).length > (arr).capacity) { \
-	    (arr).capacity = (arr).length; \
-	    dynarray_resize(arr, (arr).capacity); \
-	} \
-    }
+// reserve
+void dynarray_reserve__polymorphic(
+    void* const array,
+    size_t const data_size,
+    size_t const n
+);
+#define dynarray_reserve(array, n) \
+    dynarray_reserve__polymorphic(&(array), sizeof(*(array).data), n)
 
-#define dynarray_push(arr, element) \
-    { \
-	if ((arr).length == (arr).capacity) { \
-	    (arr).capacity *= 2; \
-	    (arr).capacity += 8; \
-	    dynarray_resize((arr), (arr).capacity); \
-	} \
-	(arr).data[(arr).length] = element; \
-	(arr).length += 1; \
-    }
+// push
+void dynarray_push__polymorphic(
+    void* const array,
+    size_t const data_size,
+    void const* const element
+);
+#define dynarray_push(array, element) do { \
+	__typeof__(*(array).data) temp = (element); \
+	dynarray_push__polymorphic(&(array), sizeof(*(array).data), &temp); \
+    } while(0)
 
-#define dynarray_get(arr, i) (arr).data[i]
+#define dynarray_get_ref(array, index) \
+    ((__typeof__((array).data))((array).data + (index)))
 
-#define dynarray_get_ref(arr, i) &(arr).data[i]
-
-#define dynarray_foreach(arr, elem) \
-    for (int i = 0, once = 1; i < (arr).length; once = 1, i++) \
-    for (__typeof__((arr).data) elem = dynarray_get_ref(arr, i); once; once = 0)
+#define dynarray_get(array, index) *dynarray_get_ref(array, index)
 
 #endif // !LIST_H

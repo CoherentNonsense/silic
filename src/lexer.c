@@ -100,9 +100,7 @@ void lexer_lex(Module* module) {
     context.position = (TextPosition){ 1, 1 };
     context.current_token = 0;
 
-    dynarray_init(context.module->token_list);
-    
-    dynarray_init(context.module->token_list);
+    dynarray_init(context.module->token_list);    
 
     for (context.offset = 0; context.offset < module->source.length; context.offset++) {
         char current_char = get_char(&context, context.offset);
