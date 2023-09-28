@@ -3,6 +3,7 @@
 
 #include "ast.h"
 #include "token.h"
+#include "symtable.h"
 #include "hashmap.h"
 #include "dynarray.h"
 
@@ -17,8 +18,8 @@ typedef struct Module {
     DynArray(Token) token_list;
     AstRoot* ast;
 
-    // TODO: figure out generics for this
-    HashMap functions;
+    HashMap(Item*) items;
+    SymTable symbol_table;
 
     DynArray(ModuleError) errors;
 } Module;

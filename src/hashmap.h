@@ -6,23 +6,30 @@
 #include "util.h"
 #include <stdbool.h>
 
-typedef struct Entry {
-    Span key;
-    void* value;
-    char used;
-} Entry;
+#define Entry(T) \
+    struct { \
+	Span key; \
+	T value; \
+	bool used; \
+    }
 
-typedef struct HashMap {
-    DynArray(Entry) entries;
-} HashMap;
+#define HashMap(T) \
+    struct { \
+	DynArray(Entry(T)) entries; \
+    }
 
-typedef Maybe(void*) MaybeAny;
+typedef HashMap(void*) HashMapAny;
 
-void map_init(HashMap* map);
-void map_deinit(HashMap* map);
-void map_insert(HashMap* map, Span key, void* value);
-MaybeAny map_get(HashMap const* const map, Span const key);
-bool map_has(HashMap const* const map,  Span key);
+void map_insert__polymorphic(HashMapAny* map, Span key, void* value);
+void* map_get__polymorphic(HashMapAny const* const map, Span const key);
+bool map_has__polymorphic(HashMapAny const* const map, Span const key);
+
+#define map_init(map) dynarray_init(map.entries);
+#define map_deinit(map) dynarray_deinit(map.entries);
+#define map_insert(map, key, value) map_insert__polymorphic((HashMapAny*)&map, key, value)
+#define map_get(map, key) \
+    ((__typeof__(map.entries.data->value))map_get__polymorphic((HashMapAny*)&map, key))
+#define map_has(map, key) map_has__polymorphic((HashMapAny*)&map, key)
 
 #define map_iterate(map, val, cb) for (int i  = 0; i < map.entries.capacity; i++) {\
 	Entry* entry = dynarray_get_ref(map.entries, i); \

@@ -39,14 +39,18 @@ void sil_panic(const char* format, ...)
 
 
 // Maybe
+enum MaybeType {
+    Yes,
+    No,
+};
 #define Maybe(T) \
     struct { \
-	enum { \
-	    Yes, \
-	    No, \
-	} type; \
+	enum MaybeType type; \
 	T value; \
     }
+
+// Used so we can return unnamed generic maybe
+typedef Maybe(void*) MaybeAny;
 
 #endif // !UTIL_H
 
