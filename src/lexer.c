@@ -34,6 +34,8 @@ typedef enum LexerState {
     LexerState_String,
     LexerState_Dash,
     LexerState_Equals,
+    LexerState_Dot,
+    LexerState_DotDot,
     LexerState_Slash,
     LexerState_Comment,
     LexerState_MultilineComment,
@@ -88,6 +90,8 @@ static void end_token(LexerContext* context) {
             token->kind = TokenKind_KeywordStruct;
         } else if (token_compare_literal(token, "pub")) {
 	    token->kind = TokenKind_KeywordPub;
+	} else if (token_compare_literal(token, "const")) {
+	    token->kind = TokenKind_KeywordConst;
 	}
     }
 }
@@ -135,6 +139,10 @@ void lexer_lex(Module* module) {
                         begin_token(&context, TokenKind_Comma);
                         end_token(&context);
                         break;
+		    case '.':
+			begin_token(&context, TokenKind_Dot);
+			context.state = LexerState_Dot;
+			break;
                     case '&':
                         begin_token(&context, TokenKind_Ampersand);
                         end_token(&context);
@@ -182,6 +190,10 @@ void lexer_lex(Module* module) {
                     case '/':
                         context.state = LexerState_Slash;
                         break;
+		    case '%':
+			begin_token(&context, TokenKind_Percent);
+			end_token(&context);
+			break;
                     default:
                         sil_panic("Unknown character: '%c' (%d)", current_char, current_char);
                 }
@@ -241,10 +253,45 @@ void lexer_lex(Module* module) {
                 }
                 break;
 
+	    case LexerState_Dot:
+		switch (current_char) {
+		    case '.':
+			context.current_token->kind = TokenKind_Range;
+			context.state = LexerState_DotDot;
+			break;
+		    default:
+			context.offset -= 1;
+			context.position.column -= 1;
+			end_token(&context);
+			context.state = LexerState_Start;
+			break;
+		}
+		break;
+
+	    case LexerState_DotDot:
+		switch (current_char) {
+		    case '.':
+			context.current_token->kind = TokenKind_RangeInclusive;
+			end_token(&context);
+			context.state = LexerState_Start;
+			break;
+		    default:
+			context.offset -= 1;
+			context.position.column -= 1;
+			end_token(&context);
+			context.state = LexerState_Start;
+			break;
+		}
+
 	    case LexerState_Equals:
 		switch (current_char) {
 		    case '>':
 			context.current_token->kind = TokenKind_FatArrow;
+			end_token(&context);
+			context.state = LexerState_Start;
+			break;
+		    case '=':
+			context.current_token->kind = TokenKind_Equality;
 			end_token(&context);
 			context.state = LexerState_Start;
 			break;

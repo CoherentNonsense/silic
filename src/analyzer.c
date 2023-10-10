@@ -11,10 +11,10 @@ static void analyze_fn_definition(AnalyzerContext* context, FnDef* fn_definition
 }
 
 static void analyze_ast(AnalyzerContext* context, AstRoot* root) {
-    map_init(context->module->functions);
+    //map_init(context->module->functions);
     for (int i = 0; i < root->items.length; i++) {
 	Item* item = dynarray_get(root->items, i);
-	map_insert(context->module->functions, item->name, item);
+	//map_insert(context->module->functions, item->name, item);
     }
 }
 

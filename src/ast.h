@@ -5,6 +5,7 @@
 #include "dynarray.h"
 #include "util.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct Expr Expr;
 typedef struct Stmt Stmt;
@@ -17,6 +18,7 @@ typedef struct Type Type;
 
 typedef enum TypeKind {
     TypeKind_Void,
+    TypeKind_Symbol,
     TypeKind_Int,
     TypeKind_Float,
     TypeKind_Ptr,
@@ -152,14 +154,17 @@ typedef struct Expr {
 // --------- //
 // Statement //
 // --------- //
+typedef struct Item Item;
 typedef enum StmtKind {
     StmtKind_Expr,
+    StmtKind_Item,
 } StmtKind;
 
 typedef struct Stmt {
     StmtKind kind;
     union {
 	Expr* expression;
+	Item* item;
     };
 } Stmt;
 
@@ -171,6 +176,7 @@ typedef enum ItemKind {
     ItemKind_FnDef,
     ItemKind_ExternFn,
     ItemKind_StructDef,
+    ItemKind_Const,
 } ItemKind;
 
 typedef struct Visibilty {
@@ -203,9 +209,13 @@ typedef struct StructField {
 } StructField;
 
 typedef struct StructDef {
-    Span name;
     DynArray(StructField*) fields;
 } StructDef;
+
+typedef struct Constant {
+    Type* type;
+    Expr* value;
+} Constant;
 
 typedef struct Item {
     Visibility visibility;
@@ -215,6 +225,7 @@ typedef struct Item {
 	FnDef* fn_definition;
 	ExternFn* extern_fn;
 	StructDef* struct_definition;
+	Constant* constant;
     };
 } Item;
 

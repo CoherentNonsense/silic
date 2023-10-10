@@ -1,0 +1,19 @@
+// no imports ;(
+extern fn puts(message: *c_char) -> i32;
+
+const C_STR: [c_char: _] = "Hello, World!";
+const EXIT_SUCCESS: i32 = 0;
+
+fn main() -> i32 {
+    puts "Fizzbuzz from 1 to 100\n";
+
+    for i in 0...100 {
+	if i % 2 == 0 and i % 3 == 0 { puts "fizzbuzz" }
+	else if i % 2 == 0 	     { puts "fizz" }
+	else if i % 3 == 0           { puts "buss" }
+
+	puts "\n";
+    }
+
+    EXIT_SUCCESS
+}

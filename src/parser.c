@@ -374,6 +374,19 @@ static FnDef* parse_fn_declaration(ParserContext* context, Span* name) {
     return fn_decl;
 }
 
+static Constant* parse_constant(ParserContext* context, Span* name) {
+    Constant* constant = malloc(sizeof(Constant));
+
+    Token* ident = expect_token(context, TokenKind_Symbol);
+    *name = ident->span;
+    expect_token(context, TokenKind_Colon);
+    constant->type = parse_type(context);
+    expect_token(context, TokenKind_Equals);
+    constant->value = parse_expression(context);
+
+    return constant;
+}
+
 static Item* parse_item(ParserContext* context) {
     Item* item = malloc(sizeof(Item));
 
@@ -396,6 +409,13 @@ static Item* parse_item(ParserContext* context) {
 	    consume_token(context);
 	    item->extern_fn = malloc(sizeof(ExternFn));
 	    item->extern_fn->signature = parse_fn_signature(context, &item->name);
+	    expect_token(context, TokenKind_Semicolon);
+	    break;
+	}
+
+	case TokenKind_KeywordConst: {
+	    item->kind = ItemKind_Const;
+	    item->constant = parse_constant(context, &item->name);
 	    expect_token(context, TokenKind_Semicolon);
 	    break;
 	}

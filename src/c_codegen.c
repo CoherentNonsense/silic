@@ -252,13 +252,13 @@ static void generate_definition(CodegenContext* context, Item* item) {
 }
 
 static void generate_forward_declarations(CodegenContext* context) {
-    map_iterate(context->module->functions, Item* item, {
+    /*map_iterate(context->module->functions, Item* item, {
 	if (item->kind == ItemKind_FnDef && !item->visibility.is_pub) {
 	    write_literal(context, "static ");
 	}
 	generate_fn_signature(context, item);
 	write_literal(context, ";\n");
-    });
+    });*/
 }
 
 static void generate_ast(CodegenContext* context, AstRoot* ast) {

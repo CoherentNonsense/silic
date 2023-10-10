@@ -22,10 +22,15 @@ char* token_string(TokenKind kind) {
         case TokenKind_Ampersand: return "Ampersand";
         case TokenKind_Arrow: return "Arrow";
 	case TokenKind_FatArrow: return "Fat Arrow";
+	case TokenKind_Range: return "Range";
+	case TokenKind_RangeInclusive: return "Range Inclusive";
         case TokenKind_Equals: return "Equals";
+	case TokenKind_Equality: return "Equality";
         case TokenKind_Plus: return "Plus";
         case TokenKind_Dash: return "Dash";
+	case TokenKind_Percent: return "Percent";
         case TokenKind_KeywordLet: return "Keyword(let)";
+	case TokenKind_KeywordConst: return "Keyword(const)";
         case TokenKind_KeywordFn: return "Keyword(fn)";
 	case TokenKind_KeywordIf: return "Keyword(if)";
 	case TokenKind_KeywordMatch: return "Keyword(match)";

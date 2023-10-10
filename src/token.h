@@ -26,12 +26,18 @@ typedef enum TokenKind {
     TokenKind_Slash,
     TokenKind_Tilde,
     TokenKind_Bang,
+    TokenKind_Dot,
+    TokenKind_Range,
+    TokenKind_RangeInclusive,
 
     TokenKind_Equals,
+    TokenKind_Equality,
     TokenKind_Plus,
     TokenKind_Dash,
+    TokenKind_Percent,
 
     TokenKind_KeywordLet,
+    TokenKind_KeywordConst,
     TokenKind_KeywordFn,
     TokenKind_KeywordReturn,
     TokenKind_KeywordExtern,
