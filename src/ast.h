@@ -8,9 +8,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct Expr Expr;
-typedef struct Stmt Stmt;
+typedef struct Item Item;
 typedef struct Let Let;
+typedef struct Stmt Stmt;
+typedef struct Expr Expr;
 
 
 // ------------ //
@@ -19,6 +20,7 @@ typedef struct Let Let;
 typedef struct Scope {
     struct Scope* parent;
     HashMap(Let*) symbols;
+    DynArray(struct Scope*) children;
 } Scope;
 
 typedef struct SymTable {

@@ -6,6 +6,8 @@
 #include "dynarray.h"
 
 
+// SymTable defined in ast.h
+
 SymTable symtable_init(void);
 
 void symtable_enterScope(SymTable* const symtable);

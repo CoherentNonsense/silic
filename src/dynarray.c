@@ -1,6 +1,8 @@
 #include "dynarray.h"
 #include "token.h"
 
+#include <stdint.h>
+
 void dynarray_resize__polymorphic(
     DynArrayVoid* const array,
     size_t const data_size,
@@ -35,6 +37,6 @@ void dynarray_push__polymorphic(
 	array->capacity += 8;
 	dynarray_resize__polymorphic(array, data_size, array->capacity);
     }
-    memcpy(array->data + (array->length * data_size), element, data_size);
+    memcpy((uint8_t*)array->data + (array->length * data_size), element, data_size);
     array->length += 1;
 }

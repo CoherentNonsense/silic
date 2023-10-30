@@ -9,7 +9,7 @@ typedef Entry(void*) EntryAny;
 static size_t hash_function(Span string) {
     // FNV 32-bit hash
     unsigned int h = 2166136261;
-    for (int i = 0; i < string.length; i += 1) {
+    for (size_t i = 0; i < string.length; i += 1) {
         h = h ^ ((unsigned char)*(string.start + i));
         h = h * 16777619;
     }
@@ -21,14 +21,14 @@ void map_insert__polymorphic(HashMapAny* map, Span key, void* value) {
     if (map->entries.length * 5 >= map->entries.capacity * 4) {
         size_t old_capacity = map->entries.capacity;
         dynarray_resize(map->entries, map->entries.capacity * 2 + 8);
-        for (int i = old_capacity; i < map->entries.capacity; i++) {
+        for (size_t i = old_capacity; i < map->entries.capacity; i++) {
             EntryAny* entry = (EntryAny*)dynarray_get_ref(map->entries, i);
             entry->used = 0;
         }
     }
 
     size_t start_index = hash_function(key);
-    for (int i = 0; i < map->entries.capacity; i++) {
+    for (size_t i = 0; i < map->entries.capacity; i++) {
         size_t index = (start_index + i) % map->entries.capacity;
         EntryAny* entry = (EntryAny*)dynarray_get_ref(map->entries, index);
 
@@ -50,7 +50,7 @@ void map_insert__polymorphic(HashMapAny* map, Span key, void* value) {
 
 void* map_get__polymorphic(HashMapAny const* const map, Span const key) {
     size_t start_index = hash_function(key);
-    for (int i = 0; i < map->entries.capacity; i++) {
+    for (size_t i = 0; i < map->entries.capacity; i++) {
         size_t index = (start_index + i) % map->entries.capacity;
         EntryAny* entry = (EntryAny*)dynarray_get_ref(map->entries, index);
         if (entry->used and strncmp(key.start, entry->key.start, key.length)) {

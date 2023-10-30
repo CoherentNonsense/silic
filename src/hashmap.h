@@ -31,7 +31,7 @@ bool map_has__polymorphic(HashMapAny const* const map, Span const key);
     ((__typeof__(map.entries.data->value))map_get__polymorphic((HashMapAny*)&map, key))
 #define map_has(map, key) map_has__polymorphic((HashMapAny*)&map, key)
 
-#define map_iterate(map, val, cb) for (int i  = 0; i < map.entries.capacity; i++) {\
+#define map_iterate(map, val, cb) for (size_t i  = 0; i < map.entries.capacity; i++) {\
 	val = dynarray_get_ref(map.entries, i)->value; \
         if (!dynarray_get_ref(map.entries, i)->used) {\
             continue;\

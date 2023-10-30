@@ -38,7 +38,7 @@ static void print_type(Type* type) {
 
 static void print_block(Block* block) {
     printf("{\n\n");
-    for (int i = 0; i < block->statements.length; i++) {
+    for (size_t i = 0; i < block->statements.length; i++) {
 	Stmt* statement = dynarray_get(block->statements, i);
 	print_statement(statement);
     }
@@ -96,7 +96,7 @@ static void print_expression(Expr* expression) {
 	    printf("fn call\t" RESET "name: ");
 	    span_println(expression->fn_call->name);
 	    printf("args: (\n");
-	    for (int i = 0; i < expression->fn_call->arguments.length; i++) {
+	    for (size_t i = 0; i < expression->fn_call->arguments.length; i++) {
 		print_expression(dynarray_get(expression->fn_call->arguments, i));
 		if (i < expression->fn_call->arguments.length - 1) {
 		    printf(",\n");
@@ -142,7 +142,7 @@ static void print_statement(Stmt* statement) {
 
 static void print_fn_signature(FnSig* fn_sig) {
     printf("signature: (");
-    for (int i = 0; i < fn_sig->parameters.length; i++) {
+    for (size_t i = 0; i < fn_sig->parameters.length; i++) {
 	FnParam* parameter = dynarray_get(fn_sig->parameters, i);
 	span_print(parameter->name);
 	printf(": ");
@@ -185,6 +185,8 @@ static void print_item(Item* item) {
 	case ItemKind_StructDef: {
 	    break;
 	}
+
+        default: sil_panic("ast_print Error: Unhandled Item kind");
     }
 
     printf("\n");
@@ -192,7 +194,7 @@ static void print_item(Item* item) {
 
 void ast_print(AstRoot* root) {
 
-    for (int i = 0; i < root->items.length; i += 1) {
+    for (size_t i = 0; i < root->items.length; i += 1) {
 	Item* item = dynarray_get(root->items, i);
 	print_item(item);
     }

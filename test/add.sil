@@ -10,13 +10,6 @@ pub fn main() -> i32 {
     return 0;
 }
 
-type Vec2 (
-    x: i32,
-    y: i32,
-)
-
-fn add(a: Vec2, b: Vec2) -> Vec2 = a + b
-
 fn add(a: i32, b: i32) -> i32 {
     return a + b;
 }

@@ -282,6 +282,7 @@ void lexer_lex(Module* module) {
 			context.state = LexerState_Start;
 			break;
 		}
+                break;
 
 	    case LexerState_Equals:
 		switch (current_char) {

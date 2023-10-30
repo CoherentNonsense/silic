@@ -18,7 +18,7 @@ typedef struct Module {
     DynArray(Token) token_list;
     AstRoot* ast;
 
-    HashMap(Item*) functions;
+    HashMap(Item*) items;
     SymTable symbol_table;
 
     DynArray(ModuleError) errors;

@@ -19,7 +19,7 @@ Module* compiler_compile_module(Span source, bool build) {
     printf(BOLDWHITE "\nLexing File...\n" RESET);
     lexer_lex(module);
 
-    for (int i = 0; i < module->token_list.length; i++) {
+    for (size_t i = 0; i < module->token_list.length; i++) {
 	Token* token = dynarray_get_ref(module->token_list, i);
         printf("%s: " YELLOW, token_string(token->kind));
 	token_print(token);

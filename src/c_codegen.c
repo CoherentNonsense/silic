@@ -22,7 +22,7 @@ static void write(CodegenContext* context, Span span) {
     fwrite(literal, sizeof(literal) - 1, 1, context->out_file)
 
 void write_indent(CodegenContext* context) {
-    for (int i = 0; i < context->indent_level; i++) {
+    for (size_t i = 0; i < context->indent_level; i++) {
 	write_literal(context, "    ");
     }
 }
@@ -61,7 +61,7 @@ static void generate_block(CodegenContext* context, Block* block) {
     write_literal(context, "{\n");
     context->indent_level += 1;
 
-    for (int i = 0; i < block->statements.length; i++) {
+    for (size_t i = 0; i < block->statements.length; i++) {
 	Stmt* statement = dynarray_get(block->statements, i);
 	generate_statement(context, statement);
     }
@@ -114,7 +114,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    write(context, call->name);
 	    write_literal(context, "(");
 
-	    for (int i = 0; i < call->arguments.length; i++) {
+	    for (size_t i = 0; i < call->arguments.length; i++) {
 		Expr* arg = dynarray_get(call->arguments, i);
 		generate_expression(context, arg);
 		if (i < call->arguments.length - 1) {
@@ -170,7 +170,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    generate_expression(context, expression->match->condition);
 	    write_literal(context, ") {\n");
 	    context->indent_level += 1;
-	    for (int i = 0; i < match->arms.length; i++) {
+	    for (size_t i = 0; i < match->arms.length; i++) {
 		MatchArm* arm = dynarray_get(match->arms, i);
 		write_indent(context);
 		write_literal(context, "case ");
@@ -223,7 +223,7 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
     write(context, item->name);
     write_literal(context, "(");
 
-    for (int i = 0; i < signature->parameters.length; i++) {
+    for (size_t i = 0; i < signature->parameters.length; i++) {
 	FnParam* parameter = dynarray_get(signature->parameters, i);
 	generate_type(context, parameter->type);
 	write_literal(context, " const ");
@@ -253,7 +253,7 @@ static void generate_definition(CodegenContext* context, Item* item) {
 }
 
 static void generate_forward_declarations(CodegenContext* context) {
-    map_iterate(context->module->functions, Item* item, {
+    map_iterate(context->module->items, Item* item, {
 	if (item->kind == ItemKind_FnDef && !item->visibility.is_pub) {
 	    write_literal(context, "static ");
 	}
@@ -267,7 +267,7 @@ static void generate_ast(CodegenContext* context, AstRoot* ast) {
 
     write_literal(context, "\n");
 
-    for (int i = 0; i < ast->items.length; i++) {
+    for (size_t i = 0; i < ast->items.length; i++) {
 	Item* item = dynarray_get(ast->items, i);
 	generate_definition(context, item);
     }

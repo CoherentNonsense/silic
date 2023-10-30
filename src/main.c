@@ -3,7 +3,6 @@
 #include "token.h"
 #include "lexer.h"
 #include "parser.h"
-#include "codegen.h"
 #include "string.h"
 #include "hashmap.h"
 #include "util.h"
