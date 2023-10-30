@@ -4,8 +4,9 @@
 
 #include <stdint.h>
 
-typedef char u8;
+typedef uint8_t u8;
 typedef int32_t i32;
+typedef char c_char;
 
 inline i32 SILICPRELUDE_addi32(i32 a, i32 b) {
     return a + b;

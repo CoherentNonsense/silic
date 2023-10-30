@@ -6,17 +6,10 @@
 #include "dynarray.h"
 
 
-typedef struct Scope {
-    HashMap(Let*) variables;
-} LocalEnvironment;
+SymTable symtable_init(void);
 
-typedef struct SymTable {
-    DynArray(LocalEnvironment) envs;
-} SymTable;
-
-void symtable_init(SymTable* const locals);
-void symtable_push(SymTable* const parent);
-void symtable_pop(SymTable* const locals);
+void symtable_enterScope(SymTable* const symtable);
+void symtable_exitScope(SymTable* const symtable);
 
 void symtable_insert(SymTable* const locals, Span const name, Let* const value);
 Let* symtable_get(SymTable* const locals, Span const name);

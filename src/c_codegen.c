@@ -1,6 +1,8 @@
 #include "c_codegen.h"
 
 #include "ast.h"
+#include "parser.h"
+#include "hashmap.h"
 #include "os.h"
 #include <iso646.h>
 
@@ -196,8 +198,7 @@ static void generate_statement(CodegenContext* context, Stmt* statement) {
     write_indent(context);
     if (statement->kind == StmtKind_Expr) {
 	generate_expression(context, statement->expression);
-	if (statement->expression->kind != ExprKind_If &&
-		statement->expression->kind != ExprKind_Match) {
+	if (!parser_should_remove_statement_semicolon(statement->expression)) {
 	    write_literal(context, ";\n");
 	} else {
 	    write_literal(context, "\n");
@@ -252,13 +253,13 @@ static void generate_definition(CodegenContext* context, Item* item) {
 }
 
 static void generate_forward_declarations(CodegenContext* context) {
-    /*map_iterate(context->module->functions, Item* item, {
+    map_iterate(context->module->functions, Item* item, {
 	if (item->kind == ItemKind_FnDef && !item->visibility.is_pub) {
 	    write_literal(context, "static ");
 	}
 	generate_fn_signature(context, item);
 	write_literal(context, ";\n");
-    });*/
+    });
 }
 
 static void generate_ast(CodegenContext* context, AstRoot* ast) {

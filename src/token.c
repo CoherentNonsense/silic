@@ -3,7 +3,10 @@
 #include "string.h"
 
 int token_compare_literal(Token* token, char* literal) {
-    return !strncmp(token->span.start, literal, token->span.length);
+    size_t const literal_length = strlen(literal);
+    size_t const max_length = token->span.length > literal_length ?
+	token->span.length : literal_length;
+    return !strncmp(token->span.start, literal, max_length);
 }
 
 char* token_string(TokenKind kind) {

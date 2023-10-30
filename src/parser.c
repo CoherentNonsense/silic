@@ -449,5 +449,9 @@ void parser_parse(Module* module) {
 }
 
 bool parser_should_remove_statement_semicolon(Expr* expression) {
-    return expression->kind == ExprKind_If || expression->kind == ExprKind_Match;
+    return (
+	expression->kind == ExprKind_If ||
+	expression->kind == ExprKind_Match ||
+	expression->kind == ExprKind_Block
+    );
 }

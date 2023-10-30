@@ -4,11 +4,26 @@
 #include "span.h"
 #include "dynarray.h"
 #include "util.h"
+#include "hashmap.h"
 #include <stdbool.h>
 #include <stdint.h>
 
 typedef struct Expr Expr;
 typedef struct Stmt Stmt;
+typedef struct Let Let;
+
+
+// ------------ //
+// Symbol Table //
+// ------------ //
+typedef struct Scope {
+    struct Scope* parent;
+    HashMap(Let*) symbols;
+} Scope;
+
+typedef struct SymTable {
+    DynArray(Scope*) children;
+} SymTable;
 
 
 // ---- //
@@ -77,6 +92,7 @@ typedef struct NumberLit {
 } NumberLit;
 
 typedef struct Block {
+    
     DynArray(Stmt*) statements;
 } Block;
 
@@ -128,6 +144,11 @@ typedef struct Let {
     Expr* value;
 } Let;
 
+typedef struct Symbol {
+    Span symbol;
+    void* scope;
+} Symbol;
+
 typedef struct FnCall {
     Span name;
     DynArray(Expr*) arguments;
@@ -154,17 +175,14 @@ typedef struct Expr {
 // --------- //
 // Statement //
 // --------- //
-typedef struct Item Item;
 typedef enum StmtKind {
     StmtKind_Expr,
-    StmtKind_Item,
 } StmtKind;
 
 typedef struct Stmt {
     StmtKind kind;
     union {
 	Expr* expression;
-	Item* item;
     };
 } Stmt;
 

@@ -1,18 +1,27 @@
-extern fn puts(message: *u8) -> i32;
+extern fn puts(message: *c_char) -> i32;
 
 pub fn main() -> i32 {
-    if (add(1, 2) - 1) {
-	puts("WEEEE!");
+    {
+	let i: i32 = 10;
     }
+
+    let i: i32 = 10;
 
     return 0;
 }
 
-pub fn add(a: i32, b: i32) -> i32 {
+type Vec2 (
+    x: i32,
+    y: i32,
+)
+
+fn add(a: Vec2, b: Vec2) -> Vec2 = a + b
+
+fn add(a: i32, b: i32) -> i32 {
     return a + b;
 }
 
-pub fn sub(a: i32, b: i32) -> i32 {
+fn sub(a: i32, b: i32) -> i32 {
     return a - b;
 }
 
