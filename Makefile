@@ -4,7 +4,7 @@ OFILES = $(patsubst src/%.c, build/%.o, $(CFILES))
 all: silic
 
 build/%.o: src/%.c
-	gcc -c -o $@ -Isrc $< -Wall -Wextra -pedantic
+	gcc -g -c -o $@ -Isrc $< -Wall -Wextra -pedantic
 
 silic: $(OFILES)
 	gcc -o $@ $(OFILES)

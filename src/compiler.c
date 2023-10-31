@@ -12,6 +12,7 @@ Module* compiler_compile_module(Span source, bool build) {
     Module* module = malloc(sizeof(Module));
     module->source = source;
     module->build = build;
+    symtable_init(&module->symbol_table);
 
 
     // ------ //

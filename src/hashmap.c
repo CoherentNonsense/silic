@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include <iso646.h>
+#include <assert.h>
 
 
 typedef Entry(void*) EntryAny;
@@ -36,6 +37,8 @@ void map_insert__polymorphic(HashMapAny* map, Span key, void* value) {
             continue;
         }
 
+        assert(entry->key.start != key.start && entry->key.length != key.length && "Inserting duplicate key into hashmap");
+
         entry->key = key;
         entry->value = value;
         entry->used = 1;
@@ -53,7 +56,7 @@ void* map_get__polymorphic(HashMapAny const* const map, Span const key) {
     for (size_t i = 0; i < map->entries.capacity; i++) {
         size_t index = (start_index + i) % map->entries.capacity;
         EntryAny* entry = (EntryAny*)dynarray_get_ref(map->entries, index);
-        if (entry->used and strncmp(key.start, entry->key.start, key.length)) {
+        if (entry->used and strncmp(key.start, entry->key.start, key.length) == 0) {
             return entry->value;
         }
     }

@@ -19,12 +19,13 @@ typedef struct Expr Expr;
 // ------------ //
 typedef struct Scope {
     struct Scope* parent;
+    DynArray(struct Scope) children;
     HashMap(Let*) symbols;
-    DynArray(struct Scope*) children;
 } Scope;
 
 typedef struct SymTable {
-    DynArray(Scope*) children;
+    Scope root_scope;
+    Scope* current_scope;
 } SymTable;
 
 
@@ -94,7 +95,7 @@ typedef struct NumberLit {
 } NumberLit;
 
 typedef struct Block {
-    
+    Scope* scope;
     DynArray(Stmt*) statements;
 } Block;
 
@@ -145,11 +146,6 @@ typedef struct Let {
     Type* type;
     Expr* value;
 } Let;
-
-typedef struct Symbol {
-    Span symbol;
-    void* scope;
-} Symbol;
 
 typedef struct FnCall {
     Span name;

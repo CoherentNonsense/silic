@@ -76,7 +76,6 @@ static void generate_number_literal(CodegenContext* context, NumberLit* number_l
 }
 
 static void generate_binop(CodegenContext* context, BinOp* binop) {
-    write_literal(context, "SILICPRELUDE_");
     switch (binop->kind) {
 	case BinOpKind_Add: write_literal(context, "addi32("); break;
 	case BinOpKind_Sub: write_literal(context, "subi32("); break;
@@ -104,6 +103,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	}
 
 	case ExprKind_Symbol: {
+            write_literal(context, "var_");
 	    write(context, expression->symbol);
 	    break;
 	}
@@ -130,6 +130,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	case ExprKind_Let: {
 	    generate_type(context, expression->let->type);
 	    write_literal(context, " ");
+            write_literal(context, "var_");
 	    write(context, expression->let->name);
 	    write_literal(context, " = ");
 	    generate_expression(context, expression->let->value);
@@ -223,10 +224,15 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
     write(context, item->name);
     write_literal(context, "(");
 
+    // void as empty parameters
+    if (signature->parameters.length == 0) {
+        write_literal(context, "void");
+    }
     for (size_t i = 0; i < signature->parameters.length; i++) {
 	FnParam* parameter = dynarray_get(signature->parameters, i);
 	generate_type(context, parameter->type);
 	write_literal(context, " const ");
+        write_literal(context, "var_");
 	write(context, parameter->name);
 	if (i < signature->parameters.length - 1) {
 	    write_literal(context, ", ");
