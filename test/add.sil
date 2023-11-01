@@ -1,19 +1,11 @@
 extern fn puts(message: *c_char) -> i32;
 
 pub fn main() -> i32 {
-    {
-	let i: i32 = 10;
-        let j: i32 = 10;
-        add(i, j);
-    }
-
     let i: i32 = 10;
+    let j: i32 = 10;
+    let k: i32 = add(i, j);
 
-    let j: i32 = mul(i, i);
-    let k: i32 = div(i, j);
-
-
-    return j;
+    return k;
 }
 
 fn add(a: i32, b: i32) -> i32 {

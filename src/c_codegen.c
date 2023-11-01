@@ -42,6 +42,7 @@ static void generate_type(CodegenContext* context, Type* type) {
 	    break;
 	}
 
+	case TypeKind_Int:
 	case TypeKind_Symbol: {
 	    write(context, type->symbol);
 	    break;
@@ -156,7 +157,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    write_literal(context, "if (");
 	    generate_expression(context, expression->if_expr->condition);
 	    write_literal(context, ") ");
-	    generate_block(context, expression->if_expr->then);
+	    generate_block(context, expression->if_expr->then->block);
 	    if (expression->if_expr->otherwise.type == Yes) {
 		write_literal(context, " else ");
 		generate_expression(context, expression->if_expr->otherwise.value);
@@ -250,7 +251,7 @@ static void generate_definition(CodegenContext* context, Item* item) {
 	    }
 	    generate_fn_signature(context, item);
 	    write_literal(context, " ");
-	    generate_block(context, item->fn_definition->body);
+	    generate_block(context, item->fn_definition->body->block);
 	    write_literal(context, "\n\n");
 	    break;
 	

@@ -12,6 +12,7 @@ static void print_type(Type* type) {
 	    break;
 	}
 
+	case TypeKind_Int:
 	case TypeKind_Symbol: {
 	    printf(BOLDGREEN);
 	    span_print(type->symbol);
@@ -115,7 +116,7 @@ static void print_expression(Expr* expression) {
 	    printf("if\n" RESET "condition: (\n");
 	    print_expression(expression->if_expr->condition);
 	    printf(")\nthen: ");
-	    print_block(expression->if_expr->then);
+	    print_block(expression->if_expr->then->block);
 	    if (expression->if_expr->otherwise.type == No) {
 		break;
 	    }
@@ -161,7 +162,7 @@ static void print_fn_definition(FnDef* fn_decl) {
     print_fn_signature(fn_decl->signature);
 
     printf("body: ");
-    print_block(fn_decl->body);
+    print_block(fn_decl->body->block);
 }
 
 static void print_item(Item* item) {

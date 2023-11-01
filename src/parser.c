@@ -50,7 +50,12 @@ static Type* parse_type(ParserContext* context) {
 	    break;
 	}
 
-	case TokenKind_Symbol: {	
+	case TokenKind_Symbol: {
+	    // TODO: desparate for type tables :(
+	    if (strncmp(token->span.start, "i32", 3) == 0) {
+		type->kind = TypeKind_Int;
+		break;
+	    }
 	    type->kind = TypeKind_Symbol;
 
 	    break;
@@ -198,7 +203,11 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->kind = ExprKind_If;
 	    expression->if_expr = malloc(sizeof(If));
 	    expression->if_expr->condition = parse_expression(context);
-	    expression->if_expr->then = parse_block(context);
+
+	    if (current_token(context)->kind != TokenKind_LBrace) {
+		sil_panic("Expected block after if");
+	    }
+	    expression->if_expr->then = parse_expression(context);
 	   
 	    // else (if) branch
 	    if (current_token(context)->kind == TokenKind_KeywordElse) {
@@ -365,11 +374,16 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
     return fn_sig;
 }
 
-static FnDef* parse_fn_declaration(ParserContext* context, Span* name) {
+static FnDef* parse_fn_definition(ParserContext* context, Span* name) {
     FnDef* fn_decl = malloc(sizeof(FnDef));
 
     fn_decl->signature = parse_fn_signature(context, name);
-    fn_decl->body = parse_block(context);
+
+    // TODO: Make block expression
+    if (current_token(context)->kind != TokenKind_LBrace) {
+	sil_panic("Expected block as function body");
+    }
+    fn_decl->body = parse_expression(context);
 
     return fn_decl;
 }
@@ -400,7 +414,7 @@ static Item* parse_item(ParserContext* context) {
     switch (current_token(context)->kind) {
 	case TokenKind_KeywordFn: {
 	    item->kind = ItemKind_FnDef;
-	    item->fn_definition = parse_fn_declaration(context, &item->name);
+	    item->fn_definition = parse_fn_definition(context, &item->name);
 	    break;
 	}
 

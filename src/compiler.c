@@ -34,7 +34,7 @@ Module* compiler_compile_module(Span source, bool build) {
     printf(BOLDWHITE "\nParsing Tokens...\n" RESET);
     parser_parse(module); 
 
-    ast_print(module->ast);
+    //ast_print(module->ast);
     printf(BOLDWHITE "Parsed Tokens.\n" RESET);
 
    

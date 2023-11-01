@@ -101,7 +101,7 @@ typedef struct Block {
 
 typedef struct If {
     Expr* condition;
-    Block* then;
+    Expr* then;
     Maybe(Expr*) otherwise;
 } If;
 
@@ -154,7 +154,7 @@ typedef struct FnCall {
 
 typedef struct Expr {
     ExprKind kind;
-    Type type;
+    Type* type;
     union {
 	StringLit string_literal;
 	NumberLit* number_literal;
@@ -211,7 +211,7 @@ typedef struct FnSig {
 
 typedef struct FnDef {
     FnSig* signature;
-    Block* body;
+    Expr* body;
 } FnDef;
 
 typedef struct ExternFn {
