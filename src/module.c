@@ -48,7 +48,7 @@ void module_display_errors(Module* module) {
         int line_num_width = 0;
         for (int i = error->token->position.line; i > 0; i /= 10) { line_num_width += 1; }
         // print border
-        fprintf(stderr, "    ┌ " OTHER_BLUE "%.*s:%d:%d" RESET " ───\n    │\n", (int)module->path.length, module->path.start, position.line, position.column);
+        fprintf(stderr, "    ┌ " OTHER_BLUE "%.*s:%d:%d" RESET " ───\n", (int)module->path.length, module->path.start, position.line, position.column);
         fprintf(stderr, "%.*s" OTHER_BLUE "%.*d" RESET " │ ", 3 - line_num_width, "  ", line_num_width, error->token->position.line);
         // print source
         char* start = (char*)error->token->span.start - (position.column - 1);

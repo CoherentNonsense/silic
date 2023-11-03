@@ -11,7 +11,7 @@ typedef struct ParserContext {
     unsigned int token_index;
 } ParserContext;
 
-#define PROPAGATE_ERROR(context) do { if (context->module->has_errors) { return NULL; }  } while(0)
+#define RET_ON_ERR(context) do { if (context->module->has_errors) { return NULL; }  } while(0)
 
 static Token* current_token(ParserContext* context) {
     return dynarray_get_ref(context->module->token_list, context->token_index);
@@ -24,11 +24,11 @@ static Token* consume_token(ParserContext* context) {
     return token;
 }
 
-#define EXPECT_TOKEN(context, kind) do { expect_token(context, kind); PROPAGATE_ERROR(context) } while(0)
+#define EXPECT_TOKEN_OR_RET(context, kind) expect_token(context, kind); RET_ON_ERR(context)
 static Token* expect_token(ParserContext* context, TokenKind kind) {
     Token* token = consume_token(context);
     if (token->kind != kind) {
-	sil_panic("Unexpected token[%d:%d]: got %s. expected %s", token->position.line, token->position.column, token_string(token->kind), token_string(kind));
+        module_add_error(context->module, token, "unexpected token", "expected %s, found %s", token_string(kind), token_string(token->kind));
     }
 
     return token;
@@ -44,8 +44,9 @@ static void expect_semicolon(ParserContext* context) {
         semicolon->kind = TokenKind_Semicolon;
         semicolon->position = prev_token->position;
         semicolon->span = prev_token->span;
-        semicolon->position.column += 1;
-        semicolon->span.start += 1;
+        semicolon->position.column += prev_token->span.length;
+        semicolon->span.start += prev_token->span.length;
+        semicolon->span.length = 1;
 
         module_add_error(
             context->module,
@@ -118,10 +119,12 @@ static Block* parse_block(ParserContext* context) {
     Block* block = malloc(sizeof(Block));
     dynarray_init(block->statements);
 
-    expect_token(context, TokenKind_LBrace);
+    EXPECT_TOKEN_OR_RET(context, TokenKind_LBrace);
     
     while (current_token(context)->kind != TokenKind_RBrace) {
 	Stmt* statement = parse_statement(context);
+        RET_ON_ERR(context);
+
 	dynarray_push(block->statements, statement);
     }
 
@@ -148,6 +151,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    consume_token(context);
 
 	    expression->ret = parse_expression(context);
+            RET_ON_ERR(context);
 
 	    break;
 	}
@@ -155,6 +159,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	case TokenKind_NumberLiteral: {
 	    expression->kind = ExprKind_NumberLit;
 	    expression->number_literal = parse_number_literal(context);
+            RET_ON_ERR(context);
 	    break;
 	}
 
@@ -170,17 +175,19 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    consume_token(context);
 
-	    Token* name_token = expect_token(context, TokenKind_Symbol);
+	    Token* name_token = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
 	    expression->let = malloc(sizeof(Let));
 	    expression->let->name = name_token->span;
 
-	    expect_token(context, TokenKind_Colon);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_Colon);
 
 	    expression->let->type = parse_type(context);
+            RET_ON_ERR(context);
 
-	    expect_token(context, TokenKind_Equals);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_Equals);
 
 	    expression->let->value = parse_expression(context);
+            RET_ON_ERR(context);
 
 	    break;
 	}
@@ -199,11 +206,12 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->fn_call = malloc(sizeof(FnCall));
 	    expression->fn_call->name = symbol_token->span;
 
-	    expect_token(context, TokenKind_LParen);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_LParen);
 
 	    dynarray_init(expression->fn_call->arguments);
 	    while (current_token(context)->kind != TokenKind_RParen) {
 		Expr* arg = parse_expression(context);
+                RET_ON_ERR(context);
 		dynarray_push(expression->fn_call->arguments, arg);
 
 		if (current_token(context)->kind != TokenKind_Comma) {
@@ -213,7 +221,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		consume_token(context);
 	    }
 
-	    expect_token(context, TokenKind_RParen);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_RParen);
 
 	    break;
 	}
@@ -221,6 +229,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	case TokenKind_LBrace: {
 	    expression->kind = ExprKind_Block;
 	    expression->block = parse_block(context);
+            RET_ON_ERR(context);
 
 	    break;
 	}
@@ -230,11 +239,13 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->kind = ExprKind_If;
 	    expression->if_expr = malloc(sizeof(If));
 	    expression->if_expr->condition = parse_expression(context);
+            RET_ON_ERR(context);
 
 	    if (current_token(context)->kind != TokenKind_LBrace) {
 		sil_panic("Expected block after if");
 	    }
 	    expression->if_expr->then = parse_expression(context);
+            RET_ON_ERR(context);
 	   
 	    // else (if) branch
 	    if (current_token(context)->kind == TokenKind_KeywordElse) {
@@ -248,6 +259,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 		expression->if_expr->otherwise.type = Yes;
 		expression->if_expr->otherwise.value = parse_expression(context);
+                RET_ON_ERR(context);
 	    } else {
 		expression->if_expr->otherwise.type = No;
 	    }
@@ -262,29 +274,35 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    dynarray_init(expression->match->arms);
 
 	    expression->match->condition = parse_expression(context);
+            RET_ON_ERR(context);
 
-	    expect_token(context, TokenKind_LBrace);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_LBrace);
 	   
 	    while (current_token(context)->kind != TokenKind_RBrace) {
 		MatchArm* arm = malloc(sizeof(MatchArm));
 		arm->pattern = parse_number_literal(context);
-		expect_token(context, TokenKind_FatArrow);
+                RET_ON_ERR(context);
+
+		EXPECT_TOKEN_OR_RET(context, TokenKind_FatArrow);
 		arm->then = parse_expression(context);
+                RET_ON_ERR(context);
+
 		dynarray_push(expression->match->arms, arm);
 
 		if (current_token(context)->kind != TokenKind_RBrace) {
-		    expect_token(context, TokenKind_Comma);
+		    EXPECT_TOKEN_OR_RET(context, TokenKind_Comma);
 		}
 
 	    }
 
-	    expect_token(context, TokenKind_RBrace);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_RBrace);
 
 	    break;
 	}
 
 	default: {
-	    sil_panic("Expected expression. Got %s", token_string(current_token(context)->kind));
+            module_add_error(context->module, current_token(context), "expected expression", "expression cannot start with %s", token_string(current_token(context)->kind));
+            return NULL;
 	}
     }
 
@@ -296,9 +314,12 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
     if (current_token(context)->kind == TokenKind_LParen) {
 	consume_token(context);
 	left_expression = parse_expression(context);
-	expect_token(context, TokenKind_RParen);
+        RET_ON_ERR(context);
+
+	EXPECT_TOKEN_OR_RET(context, TokenKind_RParen);
     } else {
 	left_expression = parse_primary_expression(context);
+        RET_ON_ERR(context);
     }
 
     while (1) {
@@ -313,6 +334,8 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 	consume_token(context);
 
 	Expr* right_expression = parse_expression_prec(context, right);
+        RET_ON_ERR(context);
+
 	Expr* operator = malloc(sizeof(Expr));
 	operator->kind = ExprKind_BinOp;
 	operator->binary_operator = malloc(sizeof(BinOp));
@@ -346,9 +369,11 @@ static Stmt* parse_statement(ParserContext* context) {
 	default: {
 	    statement->kind = StmtKind_Expr;
 	    statement->expression = parse_expression(context);
+            RET_ON_ERR(context);
 	   
 	    if (!parser_should_remove_statement_semicolon(statement->expression)) {
-		expect_token(context, TokenKind_Semicolon);
+		expect_semicolon(context);
+                RET_ON_ERR(context);
 	    }
 
 	    break;
@@ -360,23 +385,24 @@ static Stmt* parse_statement(ParserContext* context) {
 static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
     FnSig* fn_sig = malloc(sizeof(FnSig));
 
-    expect_token(context, TokenKind_KeywordFn);
+    EXPECT_TOKEN_OR_RET(context, TokenKind_KeywordFn);
 
-    Token* name_token = expect_token(context, TokenKind_Symbol);
+    Token* name_token = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
     *name = name_token->span;
 
-    expect_token(context, TokenKind_LParen);
+    EXPECT_TOKEN_OR_RET(context, TokenKind_LParen);
 
     dynarray_init(fn_sig->parameters);
     while (current_token(context)->kind != TokenKind_RParen) {
 	FnParam* parameter = malloc(sizeof(FnParam));
 
-	Token* name_token = expect_token(context, TokenKind_Symbol);
+	Token* name_token = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
 	parameter->name = name_token->span;
 
-	expect_token(context, TokenKind_Colon);
+	EXPECT_TOKEN_OR_RET(context, TokenKind_Colon);
 
 	parameter->type = parse_type(context);
+        RET_ON_ERR(context);
 
 	dynarray_push(fn_sig->parameters, parameter);
 
@@ -387,11 +413,12 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
 	consume_token(context);
     }
 
-    expect_token(context, TokenKind_RParen);
+    EXPECT_TOKEN_OR_RET(context, TokenKind_RParen);
 
     if (current_token(context)->kind == TokenKind_Arrow) {
 	consume_token(context);
 	fn_sig->return_type = parse_type(context);
+        RET_ON_ERR(context);
     } else {
 	Type* void_type = malloc(sizeof(Type));
 	void_type->kind = TypeKind_Void;
@@ -405,12 +432,16 @@ static FnDef* parse_fn_definition(ParserContext* context, Span* name) {
     FnDef* fn_decl = malloc(sizeof(FnDef));
 
     fn_decl->signature = parse_fn_signature(context, name);
+    RET_ON_ERR(context);
 
     // TODO: Make block expression
     if (current_token(context)->kind != TokenKind_LBrace) {
-	sil_panic("Expected block as function body");
+        module_add_error(context->module, current_token(context), "expected '{'", "Function body must be a block");
+        return NULL;
     }
+
     fn_decl->body = parse_expression(context);
+    RET_ON_ERR(context);
 
     return fn_decl;
 }
@@ -418,22 +449,18 @@ static FnDef* parse_fn_definition(ParserContext* context, Span* name) {
 static Constant* parse_constant(ParserContext* context, Span* name) {
     Constant* constant = malloc(sizeof(Constant));
 
-    Token* ident = expect_token(context, TokenKind_Symbol);
-    PROPAGATE_ERROR(context);
-
+    Token* ident = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
     *name = ident->span;
 
-    expect_token(context, TokenKind_Colon);
-    PROPAGATE_ERROR(context);
+    EXPECT_TOKEN_OR_RET(context, TokenKind_Colon);
 
     constant->type = parse_type(context);
-    PROPAGATE_ERROR(context);
+    RET_ON_ERR(context);
 
-    expect_token(context, TokenKind_Equals);
-    PROPAGATE_ERROR(context);
+    EXPECT_TOKEN_OR_RET(context, TokenKind_Equals);
 
     constant->value = parse_expression(context);
-    PROPAGATE_ERROR(context);
+    RET_ON_ERR(context);
 
     return constant;
 }
@@ -452,6 +479,7 @@ static Item* parse_item(ParserContext* context) {
 	case TokenKind_KeywordFn: {
 	    item->kind = ItemKind_FnDef;
 	    item->fn_definition = parse_fn_definition(context, &item->name);
+            RET_ON_ERR(context);
 	    break;
 	}
 
@@ -460,15 +488,19 @@ static Item* parse_item(ParserContext* context) {
 	    consume_token(context);
 	    item->extern_fn = malloc(sizeof(ExternFn));
 	    item->extern_fn->signature = parse_fn_signature(context, &item->name);
-	    expect_token(context, TokenKind_Semicolon);
+	    EXPECT_TOKEN_OR_RET(context, TokenKind_Semicolon);
 	    break;
 	}
 
 	case TokenKind_KeywordConst: {
 	    item->kind = ItemKind_Const;
             consume_token(context);
+
 	    item->constant = parse_constant(context, &item->name);
+            RET_ON_ERR(context);
+
             expect_semicolon(context);
+            RET_ON_ERR(context);
 	    break;
 	}
 	
@@ -492,9 +524,8 @@ static AstRoot* parse_root(ParserContext* context) {
 
     while (current_token(context)->kind != TokenKind_Eof) {
 	Item* item = parse_item(context);
-        if (context->module->has_errors) {
-            break;
-        }
+        RET_ON_ERR(context);
+
 	dynarray_push(root->items, item);
     }
 
