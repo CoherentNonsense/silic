@@ -2,6 +2,7 @@
 
 #include "ast.h"
 #include <stdbool.h>
+#include <iso646.h>
 
 static void analyze_statement(Module*, Stmt*);
 static void analyze_expression(Module*, Expr*);
@@ -70,8 +71,8 @@ static void analyze_expression(Module* module, Expr* expression) {
 	    }
 
 	    Item* item = map_get(module->items, fn_call->name);
-	    if (item == NULL || item->kind != ItemKind_FnDef) {
-		sil_panic("Call to undeclared function");
+	    if (item == NULL or (item->kind != ItemKind_FnDef and item->kind != ItemKind_ExternFn)) {
+		sil_panic("Call to undeclared function %.*s", (int)fn_call->name.length, fn_call->name.start);
 	    }
 	    FnDef* fn_definition = item->fn_definition;
 

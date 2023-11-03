@@ -5,7 +5,9 @@ pub fn main() -> i32 {
     let j: i32 = 10;
     let k: i32 = add(i, j);
 
-    return k;
+    puts("done");
+
+    return 0;
 }
 
 fn add(a: i32, b: i32) -> i32 {

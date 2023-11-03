@@ -1,0 +1,54 @@
+// aggregate definitions
+pub type String = {
+    data: *u8,
+    length: usize,
+}
+
+pub enum Maybe A {
+    None,
+    Some A
+}
+
+
+// function definitions
+pub add :: (a: i32, b: i32) i32 { a + b }
+
+pub add :: |a: i32, b: i32| -> i32 { a + b }
+
+pub fn add a: i32, b: i32 -> i32 { a + b }
+
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+
+pub add :: i32, i32 -> i32;
+add a, b { a + b }
+
+pub fn add(a: i32, b: i32) -> i32 = a + b
+
+
+// function calls
+add j k;
+
+add j, k;
+
+add i, sub 1, -2;
+
+mul-1,2;
+
+mul - 1, 2;
+
+
+// chaining
+let i = 3 -> add(3) -> add(j) -> add(-1);
+
+let i = 3.add(3).add(j).add(-1);
+
+let i = 3 -> add 3 -> add j -> add -1;
+
+let i = 3.add 3.add j.add -1;
+
+let i = vec2.add 2 4.add 4 5.add -2 5;
+
+let i = vec2.add 2 4 -> add 4 5 -> add -2 5;
+
+
+
