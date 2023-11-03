@@ -36,7 +36,12 @@ Module* compiler_compile_module(Span path, Span source, bool build, bool debug_i
 
     // ------- //
     // Parsing //
-    parser_parse(module); 
+    parser_parse(module);
+
+    if (module->has_errors) {
+        module_display_errors(module);
+        return NULL;
+    }
 
     if (debug_info) {
         printf(BOLDWHITE "AST\n---\n" RESET);

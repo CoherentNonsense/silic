@@ -11,36 +11,36 @@ int token_compare_literal(Token* token, char* literal) {
 
 char* token_string(TokenKind kind) {
     switch (kind) {
-        case TokenKind_Eof: return "EOF";
-        case TokenKind_Symbol: return "Symbol";
-        case TokenKind_NumberLiteral: return "Number Literal";
-        case TokenKind_StringLiteral: return "String Literal";
-        case TokenKind_LBrace: return "Left Brace";
-        case TokenKind_RBrace: return "Right Brace";
-        case TokenKind_LParen: return "Left Parenthesis";
-        case TokenKind_RParen: return "Right Parenthesis";
-        case TokenKind_Colon: return "Colon";
-        case TokenKind_Semicolon: return "SemiColon";
-        case TokenKind_Comma: return "Comma";
-        case TokenKind_Ampersand: return "Ampersand";
-        case TokenKind_Arrow: return "Arrow";
-	case TokenKind_FatArrow: return "Fat Arrow";
-	case TokenKind_Range: return "Range";
-	case TokenKind_RangeInclusive: return "Range Inclusive";
-        case TokenKind_Equals: return "Equals";
-	case TokenKind_Equality: return "Equality";
-        case TokenKind_Plus: return "Plus";
-        case TokenKind_Dash: return "Dash";
-	case TokenKind_Percent: return "Percent";
-        case TokenKind_KeywordLet: return "Keyword(let)";
-	case TokenKind_KeywordConst: return "Keyword(const)";
-        case TokenKind_KeywordFn: return "Keyword(fn)";
-	case TokenKind_KeywordIf: return "Keyword(if)";
-	case TokenKind_KeywordMatch: return "Keyword(match)";
-        case TokenKind_KeywordReturn: return "Keyword(return)";
-        case TokenKind_KeywordExtern: return "Keyword(extern)";
-	case TokenKind_KeywordStruct: return "Keyword(struct)";
-	case TokenKind_KeywordPub: return "Keyword(pub)";
+        case TokenKind_Eof: return "end of file";
+        case TokenKind_Symbol: return "symbol";
+        case TokenKind_NumberLiteral: return "number literal";
+        case TokenKind_StringLiteral: return "string literal";
+        case TokenKind_LBrace: return "'}'";
+        case TokenKind_RBrace: return "'{'";
+        case TokenKind_LParen: return "'('";
+        case TokenKind_RParen: return "')'";
+        case TokenKind_Colon: return "':'";
+        case TokenKind_Semicolon: return "';'";
+        case TokenKind_Comma: return "','";
+        case TokenKind_Ampersand: return "'&'";
+        case TokenKind_Arrow: return "'->'";
+	case TokenKind_FatArrow: return "'=>'";
+	case TokenKind_Range: return "'..'";
+	case TokenKind_RangeInclusive: return "'..='";
+        case TokenKind_Equals: return "'='";
+	case TokenKind_Equality: return "'=='";
+        case TokenKind_Plus: return "'+'";
+        case TokenKind_Dash: return "'-'";
+	case TokenKind_Percent: return "'%'";
+        case TokenKind_KeywordLet: return "keyword 'let'";
+	case TokenKind_KeywordConst: return "keyword 'const'";
+        case TokenKind_KeywordFn: return "keyword 'fn'";
+	case TokenKind_KeywordIf: return "keyword 'if'";
+	case TokenKind_KeywordMatch: return "keyword 'match'";
+        case TokenKind_KeywordReturn: return "keyword 'return'";
+        case TokenKind_KeywordExtern: return "keyword 'extern'";
+	case TokenKind_KeywordStruct: return "keyword 'struct'";
+	case TokenKind_KeywordPub: return "keyword 'pub'";
         default: return "Unknown Token";
     }
 }

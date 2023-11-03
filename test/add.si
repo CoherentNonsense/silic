@@ -1,13 +1,15 @@
 extern fn puts(message: *c_char) -> i32;
 
+const a: i32 = 5
+
 pub fn main() -> i32 {
     let i: i32 = 10;
     let j: i32 = 10;
-    let k: i32 \= add(i, j);
+    let k: i32 = add(i, j);
 
     return k;
 }
-
+let i: i32 = 0;
 fn add(a: i32, b: i32) -> i32 {
     return a + b;
 }

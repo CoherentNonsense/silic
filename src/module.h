@@ -7,8 +7,14 @@
 #include "hashmap.h"
 #include "dynarray.h"
 
+typedef enum ModuleErrorType {
+    ModuleErrorType_Warning,
+    ModuleErrorType_Error,
+} ModuleErrorType;
+
 typedef struct ModuleError {
     Token* token;
+    ModuleErrorType type;
     const char* message;
     const char* hint;
     bool has_hint;

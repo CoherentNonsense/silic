@@ -11,6 +11,8 @@ typedef struct ParserContext {
     unsigned int token_index;
 } ParserContext;
 
+#define PROPAGATE_ERROR(context) do { if (context->module->has_errors) { return NULL; }  } while(0)
+
 static Token* current_token(ParserContext* context) {
     return dynarray_get_ref(context->module->token_list, context->token_index);
 }
@@ -22,6 +24,7 @@ static Token* consume_token(ParserContext* context) {
     return token;
 }
 
+#define EXPECT_TOKEN(context, kind) do { expect_token(context, kind); PROPAGATE_ERROR(context) } while(0)
 static Token* expect_token(ParserContext* context, TokenKind kind) {
     Token* token = consume_token(context);
     if (token->kind != kind) {
@@ -29,6 +32,30 @@ static Token* expect_token(ParserContext* context, TokenKind kind) {
     }
 
     return token;
+}
+
+static void expect_semicolon(ParserContext* context) {
+    Token* token = current_token(context);
+    if (token->kind != TokenKind_Semicolon) {
+        // add the semicolon token for error
+        Token* prev_token = dynarray_get_ref(context->module->token_list, context->token_index - 1);
+
+        Token* semicolon = malloc(sizeof(Token));
+        semicolon->kind = TokenKind_Semicolon;
+        semicolon->position = prev_token->position;
+        semicolon->span = prev_token->span;
+        semicolon->position.column += 1;
+        semicolon->span.start += 1;
+
+        module_add_error(
+            context->module,
+            semicolon,
+            "missing semicolon",
+            "missing semicolon"
+        );
+    }
+
+    consume_token(context);
 }
 
 static Type* parse_type(ParserContext* context) {
@@ -392,11 +419,21 @@ static Constant* parse_constant(ParserContext* context, Span* name) {
     Constant* constant = malloc(sizeof(Constant));
 
     Token* ident = expect_token(context, TokenKind_Symbol);
+    PROPAGATE_ERROR(context);
+
     *name = ident->span;
+
     expect_token(context, TokenKind_Colon);
+    PROPAGATE_ERROR(context);
+
     constant->type = parse_type(context);
+    PROPAGATE_ERROR(context);
+
     expect_token(context, TokenKind_Equals);
+    PROPAGATE_ERROR(context);
+
     constant->value = parse_expression(context);
+    PROPAGATE_ERROR(context);
 
     return constant;
 }
@@ -429,13 +466,20 @@ static Item* parse_item(ParserContext* context) {
 
 	case TokenKind_KeywordConst: {
 	    item->kind = ItemKind_Const;
+            consume_token(context);
 	    item->constant = parse_constant(context, &item->name);
-	    expect_token(context, TokenKind_Semicolon);
+            expect_semicolon(context);
 	    break;
 	}
 	
 	default: {
-	    sil_panic("Expected item, got %s", token_string(current_token(context)->kind));
+            module_add_error(
+                context->module,
+                current_token(context),
+                "expected item (e.g. fn, struct)",
+                "expected item, found %s",
+                token_string(current_token(context)->kind)
+            );
 	}
     }
 
@@ -448,6 +492,9 @@ static AstRoot* parse_root(ParserContext* context) {
 
     while (current_token(context)->kind != TokenKind_Eof) {
 	Item* item = parse_item(context);
+        if (context->module->has_errors) {
+            break;
+        }
 	dynarray_push(root->items, item);
     }
 
