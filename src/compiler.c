@@ -8,48 +8,55 @@
 #include "util.h"
 
 
-Module* compiler_compile_module(Span source, bool build) {
+Module* compiler_compile_module(Span path, Span source, bool build, bool debug_info) {
     Module* module = malloc(sizeof(Module));
-    module->source = source;
-    module->build = build;
-    symtable_init(&module->symbol_table);
+    module_init(module, path, source);
 
 
     // ------ //
     // Lexing //
-    printf(BOLDWHITE "\nLexing File...\n" RESET);
     lexer_lex(module);
 
-    for (size_t i = 0; i < module->token_list.length; i++) {
-	Token* token = dynarray_get_ref(module->token_list, i);
-        printf("%s: " YELLOW, token_string(token->kind));
-	token_print(token);
-        printf(RESET "\n");
+    if (module->has_errors) {
+        module_display_errors(module);
+        return NULL;
     }
-    printf(BOLDWHITE "Lexed File.\n" RESET);
+
+    // print tokens
+    if (debug_info) {
+        printf("Tokens\n------\n");
+        for (size_t i = 0; i < module->token_list.length; i++) {
+            Token* token = dynarray_get_ref(module->token_list, i);
+            printf("%s: " YELLOW, token_string(token->kind));
+            token_print(token);
+            printf(RESET "\n");
+        }
+    }
 
 
     // ------- //
     // Parsing //
-    printf(BOLDWHITE "\nParsing Tokens...\n" RESET);
     parser_parse(module); 
 
-    //ast_print(module->ast);
-    printf(BOLDWHITE "Parsed Tokens.\n" RESET);
+    if (debug_info) {
+        printf(BOLDWHITE "AST\n---\n" RESET);
+        ast_print(module->ast);
+    }
 
    
     // --------- //
     // Analyzing //
-    printf(BOLDWHITE "\nAnalyzing AST...\n" RESET);
     analyzer_analyze(module);
-    printf(BOLDWHITE "Analyzed Ast.\n" RESET);
-
+    if (debug_info) {
+        printf("Analyzed AST\n");
+    }
 
     // ------- //
     // Codegen //
-    printf(BOLDWHITE "\nGenerating IR...\n" RESET);
-    c_codegen_generate(module);
-    printf(BOLDWHITE "Generated IR.\n" RESET);
+    c_codegen_generate(module, build);
+    if (debug_info) {
+        printf(BOLDWHITE "Generated IR.\n" RESET);
+    }
 
 
     return module;

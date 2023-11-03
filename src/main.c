@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
     char* in_file_path = 0;
     char* out_file_path = "output";
     bool build = false;
+    bool debug_info = false;
 
     for (int i = 1; i < argc; i++) {
         char* arg = argv[i];
@@ -41,6 +42,8 @@ int main(int argc, char** argv) {
                 out_file_path = argv[i];
 	    } else if (strcmp(arg, "--build") == 0) {
 		build = true;
+            } else if (strcmp(arg, "--debug") == 0) {
+                debug_info = true;
             } else {
                 print_usage(arg0);
                 return EXIT_FAILURE;
@@ -67,9 +70,10 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    Span path = (Span){ in_file_path, strlen(in_file_path) };
     Span source = (Span){ buffer, length };
 
-    compiler_compile_module(source, build);
+    compiler_compile_module(path, source, build, debug_info);
 
     free(buffer);
 

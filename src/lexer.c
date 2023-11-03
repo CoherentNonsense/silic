@@ -101,7 +101,7 @@ void lexer_lex(Module* module) {
     context.module = module;
     context.offset = 0;
     context.state = LexerState_Start;
-    context.position = (TextPosition){ 1, 1 };
+    context.position = (TextPosition){ 1, 1};
     context.current_token = 0;
 
     dynarray_init(context.module->token_list);    
@@ -195,7 +195,16 @@ void lexer_lex(Module* module) {
 			end_token(&context);
 			break;
                     default:
-                        sil_panic("Unknown character: '%c' (%d)", current_char, current_char);
+                        begin_token(&context, TokenKind_Eof);
+                        end_token(&context);
+                        module_add_error(
+                            context.module,
+                            context.current_token,
+                            "Did you mean to add this?",
+                            "Unexpected character '%c'",
+                            current_char
+                        );
+                        return;
                 }
                 break;
 

@@ -8,11 +8,13 @@
 #include "dynarray.h"
 
 typedef struct ModuleError {
-    Span message;
+    Token* token;
+    const char* message;
+    const char* hint;
+    bool has_hint;
 } ModuleError;
 
 typedef struct Module {
-    bool build;
     Span path;
     Span source;
     DynArray(Token) token_list;
@@ -21,9 +23,16 @@ typedef struct Module {
     HashMap(Item*) items;
     SymTable symbol_table;
 
+    bool has_errors;
     DynArray(ModuleError) errors;
 } Module;
 
-void module_add_error(Module* module, Span error);
+
+void module_init(Module* module, Span path, Span source);
+
+__attribute__((format(printf, 4, 5)))
+void module_add_error(Module* module, Token* token, const char* hint, const char* message, ...);
+
+void module_display_errors(Module* module);
 
 #endif //!MODULE_H

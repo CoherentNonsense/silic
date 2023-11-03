@@ -3,7 +3,7 @@ extern fn puts(message: *c_char) -> i32;
 pub fn main() -> i32 {
     let i: i32 = 10;
     let j: i32 = 10;
-    let k: i32 = add(i, j);
+    let k: i32 \= add(i, j);
 
     return k;
 }

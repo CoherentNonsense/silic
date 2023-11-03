@@ -280,7 +280,7 @@ static void generate_ast(CodegenContext* context, AstRoot* ast) {
     }
 }
 
-void c_codegen_generate(Module* module) {
+void c_codegen_generate(Module* module, bool build) {
     CodegenContext context;
     context.indent_level = 0;
     context.module = module;
@@ -305,7 +305,7 @@ void c_codegen_generate(Module* module) {
 
     fclose(context.out_file);
 
-    if (module->build) {
+    if (build) {
 	system("gcc -O1 build/ir.c -o app");
     }
 }

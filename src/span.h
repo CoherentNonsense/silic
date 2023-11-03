@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 typedef struct Span {
-    char* start;
+    const char* start;
     size_t length;
 } Span;
 
