@@ -7,9 +7,22 @@ static void scope_init(Scope* scope, Scope* parent) {
     map_init(scope->symbols);
 }
 
+static void scope_deinit(Scope* scope) {
+    dynarray_deinit(scope->children);
+    map_deinit(scope->symbols);
+}
+
 void symtable_init(SymTable* symtable) {
     scope_init(&symtable->root_scope, NULL);
     symtable->current_scope = &symtable->root_scope;
+}
+
+void symtable_deinit(SymTable* symtable) {
+    Scope* current = symtable->current_scope;
+    while (current != NULL) {
+        scope_deinit(current);
+        current = current->parent;
+    }
 }
 
 void symtable_enter_scope(SymTable* const symtable) {
@@ -26,16 +39,16 @@ void symtable_exit_scope(SymTable* const symtable) {
     symtable->current_scope = symtable->current_scope->parent;
 }
 
-void symtable_insert(SymTable* const symtable, Span const name, Let* const let) {
-    map_insert(symtable->current_scope->symbols, name, let);
+void symtable_insert(SymTable* const symtable, Span const name, SymEntry* const entry) {
+    map_insert(symtable->current_scope->symbols, name, entry);
 }
 
-Let* symtable_get(SymTable* const symtable, Span const name) {
+SymEntry* symtable_get(SymTable* const symtable, Span const name) {
     Scope* scope = symtable->current_scope;
     while (scope != NULL) {
-        Let* local = map_get(scope->symbols, name);
-        if (local != NULL) {
-            return local;
+        SymEntry* entry = map_get_ref(scope->symbols, name);
+        if (entry != NULL) {
+            return entry;
         }
 
         scope = scope->parent;
@@ -44,7 +57,7 @@ Let* symtable_get(SymTable* const symtable, Span const name) {
     return NULL;
 }
 
-Let* symtable_get_local(SymTable* const symtable, Span const name) {
-    Let* let = map_get(symtable->current_scope->symbols, name);
+SymEntry* symtable_get_local(SymTable* const symtable, Span const name) {
+    SymEntry* let = map_get_ref(symtable->current_scope->symbols, name);
     return let;
 }

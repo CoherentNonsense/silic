@@ -4,6 +4,7 @@
 #include "span.h"
 #include "dynarray.h"
 #include "util.h"
+#include "typetable.h"
 #include "hashmap.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,10 +18,16 @@ typedef struct Expr Expr;
 // ------------ //
 // Symbol Table //
 // ------------ //
+// HACK: ast nodes keep a reference to the scope they're a part of and type info
+//       so they can be references later. don't...
+typedef struct SymEntry {
+    TypeEntry* type;
+} SymEntry;
+
 typedef struct Scope {
     struct Scope* parent;
     DynArray(struct Scope) children;
-    HashMap(Let*) symbols;
+    HashMap(SymEntry) symbols;
 } Scope;
 
 typedef struct SymTable {
@@ -37,14 +44,12 @@ typedef struct Type Type;
 typedef enum TypeKind {
     TypeKind_Void,
     TypeKind_Symbol,
-    TypeKind_Int,
-    TypeKind_Float,
     TypeKind_Ptr,
     TypeKind_Array,
     TypeKind_Never,
 } TypeKind;
 
-typedef struct Integer {
+typedef struct Integral {
     bool is_signed;
     uint64_t value;
 } Integer;
@@ -154,7 +159,6 @@ typedef struct FnCall {
 
 typedef struct Expr {
     ExprKind kind;
-    Type* type;
     union {
 	StringLit string_literal;
 	NumberLit* number_literal;

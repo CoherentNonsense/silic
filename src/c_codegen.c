@@ -42,7 +42,6 @@ static void generate_type(CodegenContext* context, Type* type) {
 	    break;
 	}
 
-	case TypeKind_Int:
 	case TypeKind_Symbol: {
 	    write(context, type->symbol);
 	    break;

@@ -33,11 +33,14 @@ void map_insert__polymorphic(HashMapAny* map, Span key, void* value) {
         size_t index = (start_index + i) % map->entries.capacity;
         EntryAny* entry = (EntryAny*)dynarray_get_ref(map->entries, index);
 
+        assert(
+            (entry->key.start != key.start || entry->key.length != key.length) &&
+            "Inserting duplicate key into hashmap"
+        );
+
         if (entry->used) {
             continue;
         }
-
-        assert(entry->key.start != key.start && entry->key.length != key.length && "Inserting duplicate key into hashmap");
 
         entry->key = key;
         entry->value = value;

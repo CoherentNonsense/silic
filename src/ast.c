@@ -12,7 +12,6 @@ static void print_type(Type* type) {
 	    break;
 	}
 
-	case TypeKind_Int:
 	case TypeKind_Symbol: {
 	    printf(BOLDGREEN);
 	    span_print(type->symbol);

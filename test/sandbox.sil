@@ -1,3 +1,124 @@
+let map = Map:init() -> expect("Failed to init map") -> defer deinit();
+
+add(add(1, 2), add(add(3, 4), add(5, 6)));
+
+5.add(6).add(add(3, 4)).add(1, 2);
+
+let array = Array(u32):init().push(2) -> deinit();
+
+let array = Array:init() -> array.deinit();
+let array = Array:init() -> deinit();
+let array = Array:init()
+    .push(5)
+    .push(4)
+    .push(3)
+    .push(2)
+    .push(1)
+    -> array.deinit();
+
+let buffer = Allocator:alloc(100) -> Allocator:dealloc(buffer);
+
+let expr = Parser:parse_expr() -> maybe;
+let expr = Parser:read_file() -> await;
+
+let buffer = Allocator:alloc(100);
+defer Allocator:free(buffer);
+
+
+// defer immediately after lifetime
+{
+    let array = Array:init() -> array.deinit();  // / lifetime of array
+    ..                                           // |
+    array.push(2);                               // \ array.deinit() called
+
+    something_else();
+    ..
+    expression()
+}
+
+
+{
+    let a = await delay();
+    something();
+    let b = await delay2 a;
+    println b;
+
+    // to
+
+    delay().then(|a| {
+        let a = match a {
+            None => return None,
+            Some a => a,
+        }
+
+        something();
+
+        delay2().then(|b| {
+            println b;
+        });
+    });
+}
+
+{
+    let a = try input();
+    something();
+    let b = try input2 -> try input2 -> await delay 5 -> try input3;
+    let b = input2?.input3()?.delay(5);
+
+    delay(5).await;
+
+    input4()?;
+}
+
+
+// explicit raii
+(
+    let a = DynArray:init() -> a.cleanup(),
+    Logger:debug("leaving scope"),
+) {
+    something();
+
+    let a = DynArray:init();
+}
+
+let i = 0;
+while i < 10 (i++) {
+
+}
+
+
+// kinda like
+let buffer = Allocator:alloc(100) -> Allocator:free(buffer);
+let array = Array:init() -> buffer.deinit();
+
+let array = Array:init()->deinit();
+let expr = Parser:parse_expr() >>;
+let expr = Parser:parse_expr() >>;
+
+array -> pushN(-5, 10) -> pushN(5, 10);
+
+array -> pushN -5, 10 -> pushN 5, 10;
+
+array.pushN(-5, 10).push(5, 10);
+
+5 -> add 6 -> add (3 -> add 4) -> add 2;
+
+let data = self -> write -> expect "Poisoned Lock Found";
+
+let end = usize(pos) + buf.len;
+let data_len = data.len;
+if end > data_len { data.reserve(end - data_len) }
+data[ usize(pos)..end ] -> copy_from_slice buf;
+
+Ok(buf.len);
+
+let map = Map:init();
+defer map.deinit();
+
+
+
+
+
 // aggregate definitions
 pub type String = {
     data: *u8,
@@ -31,6 +152,10 @@ add j k;
 add j, k;
 
 add i, sub 1, -2;
+add i sub 1 -2;
+add 1, add add 1, 2, 3
+add 1 $ add $ add 1 2
+add min 1, 2, max 3, 4
 
 mul-1,2;
 
@@ -49,6 +174,19 @@ let i = 3.add 3.add j.add -1;
 let i = vec2.add 2 4.add 4 5.add -2 5;
 
 let i = vec2.add 2 4 -> add 4 5 -> add -2 5;
+
+
+[]*mut Type
+
+let mut x = 10;
+let ~x = 10;
+[]*~Type
+// mut* Type ptr to mutable Type boo
+
+[]^mut^Type
+
+
+
 
 
 

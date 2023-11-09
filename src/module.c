@@ -9,9 +9,21 @@
 void module_init(Module* module, Span path, Span source) {
     module->path = path;
     module->source = source;
+    module->has_errors = false;
+
     symtable_init(&module->symbol_table);
     dynarray_init(module->errors);
-    module->has_errors = false;
+    typetable_init(&module->type_table);
+    map_init(module->types);
+    map_init(module->items);
+}
+
+void module_deinit(Module* module) {
+    symtable_deinit(&module->symbol_table);
+    dynarray_deinit(module->errors);
+    typetable_deinit(&module->type_table);
+    map_deinit(module->types);
+    map_deinit(module->items);
 }
 
 void module_add_error(Module* module, Token* token, const char* hint, const char* message, ...) {

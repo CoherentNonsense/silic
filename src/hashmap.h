@@ -29,6 +29,8 @@ bool map_has__polymorphic(HashMapAny const* const map, Span const key);
 #define map_insert(map, key, value) map_insert__polymorphic((HashMapAny*)&map, key, value)
 #define map_get(map, key) \
     ((__typeof__(map.entries.data->value))map_get__polymorphic((HashMapAny*)&map, key))
+#define map_get_ref(map, key) \
+    ((__typeof__(map.entries.data->value)*)map_get__polymorphic((HashMapAny*)&map, key))
 #define map_has(map, key) map_has__polymorphic((HashMapAny*)&map, key)
 
 #define map_iterate(map, val, cb) for (size_t i  = 0; i < map.entries.capacity; i++) {\

@@ -51,6 +51,9 @@ Module* compiler_compile_module(Span path, Span source, bool build, bool debug_i
    
     // --------- //
     // Analyzing //
+    if (debug_info) {
+        printf(BOLDWHITE "Analyzing AST\n" RESET);
+    }
     analyzer_analyze(module);
     if (debug_info) {
         printf("Analyzed AST\n");

@@ -11,7 +11,6 @@ typedef struct ParserContext {
     unsigned int token_index;
 } ParserContext;
 
-#define RET_ON_ERR(context) do { if (context->module->has_errors) { return NULL; }  } while(0)
 
 static Token* current_token(ParserContext* context) {
     return dynarray_get_ref(context->module->token_list, context->token_index);
@@ -51,7 +50,7 @@ static void expect_semicolon(ParserContext* context) {
         module_add_error(
             context->module,
             semicolon,
-            "missing semicolon",
+            "you fool",
             "missing semicolon"
         );
     }
@@ -74,18 +73,11 @@ static Type* parse_type(ParserContext* context) {
 
 	case TokenKind_Bang: {
 	    type->kind = TypeKind_Never;
-
 	    break;
 	}
 
 	case TokenKind_Symbol: {
-	    // TODO: desparate for type tables :(
-	    if (strncmp(token->span.start, "i32", 3) == 0) {
-		type->kind = TypeKind_Int;
-		break;
-	    }
 	    type->kind = TypeKind_Symbol;
-
 	    break;
 	}
 
