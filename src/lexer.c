@@ -43,29 +43,28 @@ typedef enum LexerState {
 
 typedef struct LexerContext {
     Module* module;
-    size_t offset;
+    usize offset;
     LexerState state;
     TextPosition position;
     Token* current_token;
 } LexerContext;
 
 static char get_char(LexerContext* context, unsigned int offset) {
-    return *(context->module->source.start + offset);
+    return *(context->module->source.data + offset);
 }
 
 static void begin_token(LexerContext* context, TokenKind kind) {
-    dynarray_reserve(context->module->token_list, 1);
-    context->current_token = dynarray_get_ref(context->module->token_list, context->module->token_list.length - 1);
+    context->current_token = dynarray_add(context->module->token_list);
 
     Token* token = context->current_token;
     token->kind = kind;
     token->position = context->position;
-    token->span.start = context->module->source.start + context->offset;
+    token->span.data = context->module->source.data + context->offset;
 }
 
 static void end_token(LexerContext* context) {
     Token* token = context->current_token;
-    token->span.length = (context->offset - (size_t)(token->span.start - context->module->source.start)) + 1;
+    token->span.len = (context->offset - (usize)(token->span.data - context->module->source.data)) + 1;
 
     if (token->kind == TokenKind_Symbol) {
         if (token_compare_literal(token, "fn")) {
@@ -104,9 +103,9 @@ void lexer_lex(Module* module) {
     context.position = (TextPosition){ 1, 1};
     context.current_token = 0;
 
-    dynarray_init(context.module->token_list);    
+    context.module->token_list = dynarray_init();
 
-    for (context.offset = 0; context.offset < module->source.length; context.offset++) {
+    for (context.offset = 0; context.offset < module->source.len; context.offset++) {
         char current_char = get_char(&context, context.offset);
 
         switch (context.state) {

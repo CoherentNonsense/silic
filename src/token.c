@@ -1,12 +1,13 @@
 #include "token.h"
 
 #include "string.h"
+#include <stdio.h>
 
 int token_compare_literal(Token* token, char* literal) {
     size_t const literal_length = strlen(literal);
-    size_t const max_length = token->span.length > literal_length ?
-	token->span.length : literal_length;
-    return !strncmp(token->span.start, literal, max_length);
+    size_t const max_length = token->span.len > literal_length ?
+	token->span.len : literal_length;
+    return !strncmp(token->span.data, literal, max_length);
 }
 
 char* token_string(TokenKind kind) {
@@ -46,5 +47,5 @@ char* token_string(TokenKind kind) {
 }
 
 void token_print(Token* token) {
-    printf("%.*s", (int)token->span.length, token->span.start);
+    printf("%.*s", str_format(token->span));
 }

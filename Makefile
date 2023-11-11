@@ -4,10 +4,10 @@ OFILES = $(patsubst src/%.c, build/%.o, $(CFILES))
 all: silic
 
 build/%.o: src/%.c
-	gcc -g -c -o $@ -Isrc $< -Wall -Wextra -pedantic
+	gcc -std=c11 -g -c -o $@ -Isrc $< -Wall -Wextra -pedantic -lchn
 
 silic: $(OFILES)
-	gcc -o $@ $(OFILES)
+	gcc -std=c11 -o $@ $(OFILES) -lchn
 
 clean:
 	-rm ./silic build/*.o

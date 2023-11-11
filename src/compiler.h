@@ -3,6 +3,6 @@
 
 #include "module.h"
 
-Module* compiler_compile_module(Span path, Span source, bool build, bool debug_info);
+Module* compiler_compile_module(String path, String source, bool build, bool debug_info);
 
 #endif

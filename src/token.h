@@ -1,7 +1,8 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include "span.h"
+#include <chnlib/str.h>
+
 
 typedef enum TokenKind {
     TokenKind_Eof,
@@ -58,7 +59,7 @@ typedef struct TextPosition {
 typedef struct Token {
     TokenKind kind;
     TextPosition position;
-    Span span;
+    String span;
 } Token;
 
 char* token_string(TokenKind type);

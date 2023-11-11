@@ -1,13 +1,11 @@
 #ifndef AST_H
 #define AST_H
 
-#include "span.h"
-#include "dynarray.h"
 #include "util.h"
 #include "typetable.h"
-#include "hashmap.h"
-#include <stdbool.h>
-#include <stdint.h>
+#include <chnlib/str.h>
+#include <chnlib/map.h>
+#include <chnlib/dynarray.h>
 
 typedef struct Item Item;
 typedef struct Let Let;
@@ -27,7 +25,7 @@ typedef struct SymEntry {
 typedef struct Scope {
     struct Scope* parent;
     DynArray(struct Scope) children;
-    HashMap(SymEntry) symbols;
+    Map(SymEntry) symbols;
 } Scope;
 
 typedef struct SymTable {
@@ -66,7 +64,7 @@ typedef struct Ptr {
 typedef struct Type {
     TypeKind kind;
     union {
-	Span symbol;
+	String symbol;
 	Ptr ptr;
 	Integer integer;
 	Decimal decimal;
@@ -92,11 +90,11 @@ typedef enum ExprKind {
 } ExprKind;
 
 typedef struct StringLit {
-    Span span;
+    String span;
 } StringLit;
 
 typedef struct NumberLit {
-    Span span;
+    String span;
 } NumberLit;
 
 typedef struct Block {
@@ -147,13 +145,13 @@ typedef enum OpPrec {
 } OpPrec;
 
 typedef struct Let {
-    Span name;
+    String name;
     Type* type;
     Expr* value;
 } Let;
 
 typedef struct FnCall {
-    Span name;
+    String name;
     DynArray(Expr*) arguments;
 } FnCall;
 
@@ -168,7 +166,7 @@ typedef struct Expr {
 	BinOp* binary_operator;
 	Let* let;
 	Expr* ret;
-	Span symbol;
+	String symbol;
 	FnCall* fn_call;
     };
 } Expr;
@@ -204,7 +202,7 @@ typedef struct Visibilty {
 } Visibility;
 
 typedef struct FnParam {
-    Span name;
+    String name;
     Type* type;
 } FnParam;
 
@@ -224,7 +222,7 @@ typedef struct ExternFn {
 
 typedef struct StructField {
     Visibility visibility;
-    Span name;
+    String name;
     Type* type;
 } StructField;
 
@@ -240,7 +238,7 @@ typedef struct Constant {
 typedef struct Item {
     Visibility visibility;
     ItemKind kind;
-    Span name;
+    String name;
     union {
 	FnDef* fn_definition;
 	ExternFn* extern_fn;
@@ -252,7 +250,5 @@ typedef struct Item {
 typedef struct AstRoot {
     DynArray(Item*) items;
 } AstRoot;
-
-void ast_print(AstRoot* root);
 
 #endif // !AST_H

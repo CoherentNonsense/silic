@@ -2,19 +2,22 @@
 
 #include "ast.h"
 #include "parser.h"
-#include "hashmap.h"
 #include "os.h"
-#include <iso646.h>
+
+#include <chnlib/logger.h>
+#include <chnlib/str.h>
+#include <chnlib/map.h>
+#include <stdio.h>
 
 
 typedef struct CodegenContext {
     FILE* out_file;
     Module* module;
-    size_t indent_level;
+    usize indent_level;
 } CodegenContext;
 
-static void write(CodegenContext* context, Span span) {
-    fwrite(span.start, span.length, 1, context->out_file);
+static void write(CodegenContext* context, String span) {
+    fwrite(span.data, span.len, 1, context->out_file);
 }
 
 // using a macro so we can use sizeof on the literal
@@ -22,7 +25,7 @@ static void write(CodegenContext* context, Span span) {
     fwrite(literal, sizeof(literal) - 1, 1, context->out_file)
 
 void write_indent(CodegenContext* context) {
-    for (size_t i = 0; i < context->indent_level; i++) {
+    for (usize i = 0; i < context->indent_level; i++) {
 	write_literal(context, "    ");
     }
 }
@@ -61,8 +64,8 @@ static void generate_block(CodegenContext* context, Block* block) {
     write_literal(context, "{\n");
     context->indent_level += 1;
 
-    for (size_t i = 0; i < block->statements.length; i++) {
-	Stmt* statement = dynarray_get(block->statements, i);
+    for (usize i = 0; i < dynarray_len(block->statements); i++) {
+	Stmt* statement = block->statements[i];
 	generate_statement(context, statement);
     }
 
@@ -114,10 +117,10 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    write(context, call->name);
 	    write_literal(context, "(");
 
-	    for (size_t i = 0; i < call->arguments.length; i++) {
-		Expr* arg = dynarray_get(call->arguments, i);
+	    for (usize i = 0; i < dynarray_len(call->arguments); i++) {
+		Expr* arg = call->arguments[i];
 		generate_expression(context, arg);
-		if (i < call->arguments.length - 1) {
+		if (i < dynarray_len(call->arguments) - 1) {
 		    write_literal(context, ", ");
 		}
 	    }
@@ -171,8 +174,8 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    generate_expression(context, expression->match->condition);
 	    write_literal(context, ") {\n");
 	    context->indent_level += 1;
-	    for (size_t i = 0; i < match->arms.length; i++) {
-		MatchArm* arm = dynarray_get(match->arms, i);
+	    for (usize i = 0; i < dynarray_len(match->arms); i++) {
+		MatchArm* arm = match->arms[i];
 		write_indent(context);
 		write_literal(context, "case ");
 		generate_number_literal(context, arm->pattern);
@@ -225,16 +228,16 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
     write_literal(context, "(");
 
     // void as empty parameters
-    if (signature->parameters.length == 0) {
+    if (dynarray_len(signature->parameters) == 0) {
         write_literal(context, "void");
     }
-    for (size_t i = 0; i < signature->parameters.length; i++) {
-	FnParam* parameter = dynarray_get(signature->parameters, i);
+    for (usize i = 0; i < dynarray_len(signature->parameters); i++) {
+	FnParam* parameter = signature->parameters[i];
 	generate_type(context, parameter->type);
 	write_literal(context, " const ");
         write_literal(context, "var_");
 	write(context, parameter->name);
-	if (i < signature->parameters.length - 1) {
+	if (i < dynarray_len(signature->parameters) - 1) {
 	    write_literal(context, ", ");
 	}
     }
@@ -259,13 +262,17 @@ static void generate_definition(CodegenContext* context, Item* item) {
 }
 
 static void generate_forward_declarations(CodegenContext* context) {
-    map_iterate(context->module->items, Item* item, {
-	if (item->kind == ItemKind_FnDef && !item->visibility.is_pub) {
-	    write_literal(context, "static ");
-	}
+    MapIter iter = map_iter(context->module->items);
+    
+    while (map_next(context->module->items, iter)) {
+        Item* item = map_iter_val(context->module->items, iter);
+
+        if (item->kind != ItemKind_ExternFn and !item->visibility.is_pub) {
+            write_literal(context, "static ");
+        }
 	generate_fn_signature(context, item);
 	write_literal(context, ";\n");
-    });
+    };
 }
 
 static void generate_ast(CodegenContext* context, AstRoot* ast) {
@@ -273,8 +280,8 @@ static void generate_ast(CodegenContext* context, AstRoot* ast) {
 
     write_literal(context, "\n");
 
-    for (size_t i = 0; i < ast->items.length; i++) {
-	Item* item = dynarray_get(ast->items, i);
+    for (usize i = 0; i < dynarray_len(ast->items); i++) {
+	Item* item = ast->items[i];
 	generate_definition(context, item);
     }
 }

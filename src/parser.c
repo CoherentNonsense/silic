@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include "token.h"
+#include <chnlib/dynarray.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +14,7 @@ typedef struct ParserContext {
 
 
 static Token* current_token(ParserContext* context) {
-    return dynarray_get_ref(context->module->token_list, context->token_index);
+    return &context->module->token_list[context->token_index];
 }
 
 static Token* consume_token(ParserContext* context) {
@@ -37,15 +38,15 @@ static void expect_semicolon(ParserContext* context) {
     Token* token = current_token(context);
     if (token->kind != TokenKind_Semicolon) {
         // add the semicolon token for error
-        Token* prev_token = dynarray_get_ref(context->module->token_list, context->token_index - 1);
+        Token* prev_token = &context->module->token_list[context->token_index - 1];
 
         Token* semicolon = malloc(sizeof(Token));
         semicolon->kind = TokenKind_Semicolon;
         semicolon->position = prev_token->position;
         semicolon->span = prev_token->span;
-        semicolon->position.column += prev_token->span.length;
-        semicolon->span.start += prev_token->span.length;
-        semicolon->span.length = 1;
+        semicolon->position.column += prev_token->span.len;
+        semicolon->span.data += prev_token->span.len;
+        semicolon->span.len = 1;
 
         module_add_error(
             context->module,
@@ -109,7 +110,7 @@ static void operator_precedence(TokenKind operator_kind, int* left, int* right) 
 
 static Block* parse_block(ParserContext* context) {
     Block* block = malloc(sizeof(Block));
-    dynarray_init(block->statements);
+    block->statements = dynarray_init();
 
     EXPECT_TOKEN_OR_RET(context, TokenKind_LBrace);
     
@@ -117,7 +118,7 @@ static Block* parse_block(ParserContext* context) {
 	Stmt* statement = parse_statement(context);
         RET_ON_ERR(context);
 
-	dynarray_push(block->statements, statement);
+	dynarray_push(block->statements, &statement);
     }
 
     consume_token(context);
@@ -200,11 +201,11 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    EXPECT_TOKEN_OR_RET(context, TokenKind_LParen);
 
-	    dynarray_init(expression->fn_call->arguments);
+	    expression->fn_call->arguments = dynarray_init();
 	    while (current_token(context)->kind != TokenKind_RParen) {
 		Expr* arg = parse_expression(context);
                 RET_ON_ERR(context);
-		dynarray_push(expression->fn_call->arguments, arg);
+		dynarray_push(expression->fn_call->arguments, &arg);
 
 		if (current_token(context)->kind != TokenKind_Comma) {
 		    break;
@@ -263,7 +264,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    consume_token(context);
 	    expression->kind = ExprKind_Match;
 	    expression->match = malloc(sizeof(Match));
-	    dynarray_init(expression->match->arms);
+	    expression->match->arms = dynarray_init();
 
 	    expression->match->condition = parse_expression(context);
             RET_ON_ERR(context);
@@ -279,7 +280,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		arm->then = parse_expression(context);
                 RET_ON_ERR(context);
 
-		dynarray_push(expression->match->arms, arm);
+		dynarray_push(expression->match->arms, &arm);
 
 		if (current_token(context)->kind != TokenKind_RBrace) {
 		    EXPECT_TOKEN_OR_RET(context, TokenKind_Comma);
@@ -374,7 +375,7 @@ static Stmt* parse_statement(ParserContext* context) {
     return statement;
 }
 
-static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
+static FnSig* parse_fn_signature(ParserContext* context, String* name) {
     FnSig* fn_sig = malloc(sizeof(FnSig));
 
     EXPECT_TOKEN_OR_RET(context, TokenKind_KeywordFn);
@@ -384,7 +385,7 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
 
     EXPECT_TOKEN_OR_RET(context, TokenKind_LParen);
 
-    dynarray_init(fn_sig->parameters);
+    fn_sig->parameters = dynarray_init();
     while (current_token(context)->kind != TokenKind_RParen) {
 	FnParam* parameter = malloc(sizeof(FnParam));
 
@@ -396,7 +397,7 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
 	parameter->type = parse_type(context);
         RET_ON_ERR(context);
 
-	dynarray_push(fn_sig->parameters, parameter);
+	dynarray_push(fn_sig->parameters, &parameter);
 
 	if (current_token(context)->kind != TokenKind_Comma) {
 	    break;
@@ -420,7 +421,7 @@ static FnSig* parse_fn_signature(ParserContext* context, Span* name) {
     return fn_sig;
 }
 
-static FnDef* parse_fn_definition(ParserContext* context, Span* name) {
+static FnDef* parse_fn_definition(ParserContext* context, String* name) {
     FnDef* fn_decl = malloc(sizeof(FnDef));
 
     fn_decl->signature = parse_fn_signature(context, name);
@@ -438,7 +439,7 @@ static FnDef* parse_fn_definition(ParserContext* context, Span* name) {
     return fn_decl;
 }
 
-static Constant* parse_constant(ParserContext* context, Span* name) {
+static Constant* parse_constant(ParserContext* context, String* name) {
     Constant* constant = malloc(sizeof(Constant));
 
     Token* ident = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
@@ -512,13 +513,13 @@ static Item* parse_item(ParserContext* context) {
 
 static AstRoot* parse_root(ParserContext* context) {
     AstRoot* root = malloc(sizeof(AstRoot));
-    dynarray_init(root->items);
+    root->items = dynarray_init();
 
     while (current_token(context)->kind != TokenKind_Eof) {
 	Item* item = parse_item(context);
         RET_ON_ERR(context);
 
-	dynarray_push(root->items, item);
+	dynarray_push(root->items, &item);
     }
 
     return root;

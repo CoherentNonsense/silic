@@ -2,6 +2,7 @@
 
 #include "ast.h"
 #include "typetable.h"
+#include <chnlib/logger.h>
 #include <stdbool.h>
 #include <iso646.h>
 
@@ -13,12 +14,12 @@ static void setup_primitive_types(Module* module) {
     // void
     module->primitives.entry_void = typetable_new_type(&module->type_table, TypeEntryKind_Void, 0);
 
-    map_insert(module->types, span_from_literal("void"), module->primitives.entry_void);
+    map_insert(module->types, str_from_lit("void"), &module->primitives.entry_void);
 
     // char
     module->primitives.entry_c_char = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
     module->primitives.entry_c_char->integral.is_signed = true;
-    map_insert(module->types, span_from_literal("c_char"), module->primitives.entry_c_char);
+    map_insert(module->types, str_from_lit("c_char"), &module->primitives.entry_c_char);
 
     // integral
     module->primitives.entry_u8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
@@ -31,10 +32,10 @@ static void setup_primitive_types(Module* module) {
     module->primitives.entry_u32->integral.is_signed = false;
     module->primitives.entry_u64->integral.is_signed = false;
 
-    map_insert(module->types, span_from_literal("u8"), module->primitives.entry_u8);
-    map_insert(module->types, span_from_literal("u16"), module->primitives.entry_u16);
-    map_insert(module->types, span_from_literal("u32"), module->primitives.entry_u32);
-    map_insert(module->types, span_from_literal("u64"), module->primitives.entry_u64);
+    map_insert(module->types, str_from_lit("u8"), &module->primitives.entry_u8);
+    map_insert(module->types, str_from_lit("u16"), &module->primitives.entry_u16);
+    map_insert(module->types, str_from_lit("u32"), &module->primitives.entry_u32);
+    map_insert(module->types, str_from_lit("u64"), &module->primitives.entry_u64);
 
 
     module->primitives.entry_i8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
@@ -47,10 +48,10 @@ static void setup_primitive_types(Module* module) {
     module->primitives.entry_i32->integral.is_signed = true;
     module->primitives.entry_i64->integral.is_signed = true;
 
-    map_insert(module->types, span_from_literal("i8"), module->primitives.entry_i8);
-    map_insert(module->types, span_from_literal("i16"), module->primitives.entry_i16);
-    map_insert(module->types, span_from_literal("i32"), module->primitives.entry_i32);
-    map_insert(module->types, span_from_literal("i64"), module->primitives.entry_i64);
+    map_insert(module->types, str_from_lit("i8"), &module->primitives.entry_i8);
+    map_insert(module->types, str_from_lit("i16"), &module->primitives.entry_i16);
+    map_insert(module->types, str_from_lit("i32"), &module->primitives.entry_i32);
+    map_insert(module->types, str_from_lit("i64"), &module->primitives.entry_i64);
 }
 
 static TypeEntry* resolve_type(Module* module, Type* type) {
@@ -86,8 +87,8 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 	    Block* block = expression->block;
 	    block->scope = module->symbol_table.current_scope;
 
-	    for (size_t i = 0; i < block->statements.length; i++) {
-		Stmt* statement = dynarray_get(block->statements, i);
+	    for (size_t i = 0; i < dynarray_len(block->statements); i++) {
+		Stmt* statement = block->statements[i];
 		analyze_statement(module, statement);
 	    }
 
@@ -100,7 +101,7 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 	    Let* let = expression->let;
 	    SymEntry* existing = symtable_get_local(&module->symbol_table, let->name);
 	    if (existing != NULL) {
-		sil_panic("Redeclaration of variable %.*s", (int)let->name.length, let->name.start);
+		sil_panic("Redeclaration of variable %.*s", str_format(let->name));
 	    }
 
             TypeEntry* explicit_type = resolve_type(module, let->type);
@@ -121,10 +122,10 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
             return explicit_type;
 	}
         case ExprKind_Symbol: {
-	    Span symbol = expression->symbol;
+	    String symbol = expression->symbol;
 	    SymEntry* existing = symtable_get(&module->symbol_table, symbol);
 	    if (existing == NULL) {
-		sil_panic("Use of undeclared variable %.*s", (int)symbol.length, symbol.start);
+		sil_panic("Use of undeclared variable %.*s", str_format(symbol));
 	    }
 
             return existing->type;
@@ -145,16 +146,16 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 
 	    Item* item = map_get(module->items, fn_call->name);
             if (item == NULL) {
-                sil_panic("Call to undeclared function %.*s", (int)fn_call->name.length, fn_call->name.start);
+                sil_panic("Call to undeclared function %.*s", str_format(fn_call->name));
             }
 
 	    FnDef* fn_definition = item->fn_definition;
 
             // analyze arguments
-	    for (size_t i = 0; i < fn_call->arguments.length; i += 1) {
-		TypeEntry* arg_type = analyze_expression(module, dynarray_get(fn_call->arguments, i));
+	    for (size_t i = 0; i < dynarray_len(fn_call->arguments); i += 1) {
+		TypeEntry* arg_type = analyze_expression(module, fn_call->arguments[i]);
 
-                FnParam* param = dynarray_get(fn_definition->signature->parameters, i);
+                FnParam* param = fn_definition->signature->parameters[i];
                 TypeEntry* param_type = resolve_type(module, param->type);
 
                 if (not type_eq(arg_type, param_type)) {
@@ -188,8 +189,8 @@ static void analyze_fn_definition(Module* module, FnDef* fn_definition) {
     symtable_enter_scope(&module->symbol_table);
 
     // add paramaters to symtable
-    for (size_t i = 0; i < fn_definition->signature->parameters.length; i += 1) {
-        FnParam* param = dynarray_get(fn_definition->signature->parameters, i);
+    for (size_t i = 0; i < dynarray_len(fn_definition->signature->parameters); i += 1) {
+        FnParam* param = fn_definition->signature->parameters[i];
         SymEntry entry = (SymEntry){ resolve_type(module, param->type) };
         symtable_insert(&module->symbol_table, param->name, &entry);
     }
@@ -201,20 +202,20 @@ static void analyze_fn_definition(Module* module, FnDef* fn_definition) {
 }
 
 static void analyze_ast(Module* module, AstRoot* root) {
-    for (size_t i = 0; i < root->items.length; i += 1) {
+    for (size_t i = 0; i < dynarray_len(root->items); i += 1) {
 	// add item to top level
-	Item* item = dynarray_get(root->items, i);
+	Item* item = root->items[i];
         switch (item->kind) {
             case ItemKind_ExternFn: // make these part of an import table
             case ItemKind_FnDef:
-                map_insert(module->items, item->name, item); break;
+                map_insert(module->items, item->name, &item); break;
             default:
                 sil_panic("Analyzer Error: unhandled top level item");
         }
     }
 
-    for (size_t i = 0; i < root->items.length; i += 1) {
-	Item* item = dynarray_get(root->items, i);
+    for (size_t i = 0; i < dynarray_len(root->items); i += 1) {
+	Item* item = root->items[i];
         switch (item->kind) {
             case ItemKind_FnDef: analyze_fn_definition(module, item->fn_definition); break;
             default: break;

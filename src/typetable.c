@@ -1,7 +1,7 @@
 #include "typetable.h"
 
 void typetable_init(TypeTable* table) {
-    dynarray_init(table->types);
+    table->types = dynarray_init();
 }
 
 void typetable_deinit(TypeTable* table) {
@@ -9,8 +9,7 @@ void typetable_deinit(TypeTable* table) {
 }
 
 TypeEntry* typetable_new_type(TypeTable* table, TypeEntryKind kind, size_t bits) {
-    dynarray_reserve(table->types, 1);
-    TypeEntry* entry = dynarray_last_ref(table->types);
+    TypeEntry* entry = dynarray_add(table->types);
     entry->parent_ptr = NULL;
     entry->parent_ptr_mut = NULL;
     entry->kind = kind;
@@ -20,8 +19,8 @@ TypeEntry* typetable_new_type(TypeTable* table, TypeEntryKind kind, size_t bits)
 }
 
 TypeEntry* typetable_new_ptr(TypeTable* table, TypeEntry* to, bool is_mut) {
-    dynarray_reserve(table->types, 1);
-    TypeEntry* entry = dynarray_last_ref(table->types);
+    TypeEntry* entry = dynarray_add(table->types);
+
     if (is_mut) {
         to->parent_ptr_mut = entry;
     } else {

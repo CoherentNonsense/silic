@@ -4,9 +4,9 @@
 #include "lexer.h"
 #include "parser.h"
 #include "string.h"
-#include "hashmap.h"
 #include "util.h"
 #include "os.h"
+#include <chnlib/str.h>
 
 #include <stddef.h>
 #include <stdio.h>
@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    Span path = (Span){ in_file_path, strlen(in_file_path) };
-    Span source = (Span){ buffer, length };
+    String path = str_from_lit(in_file_path);
+    String source = str_slice(buffer, length);
 
     compiler_compile_module(path, source, build, debug_info);
 

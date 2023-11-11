@@ -1,7 +1,7 @@
 #ifndef TYPETABLE_H
 #define TYPETABLE_H
 
-#include "dynarray.h"
+#include <chnlib/dynarray.h>
 #include <stdbool.h>
 
 

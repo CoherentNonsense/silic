@@ -5,8 +5,9 @@
 #include "token.h"
 #include "symtable.h"
 #include "typetable.h"
-#include "hashmap.h"
-#include "dynarray.h"
+#include <chnlib/dynarray.h>
+#include <chnlib/map.h>
+
 
 typedef enum ModuleErrorType {
     ModuleErrorType_Warning,
@@ -22,13 +23,13 @@ typedef struct ModuleError {
 } ModuleError;
 
 typedef struct Module {
-    Span path;
-    Span source;
+    String path;
+    String source;
     DynArray(Token) token_list;
     AstRoot* ast;
 
-    HashMap(Item*) items;
-    HashMap(TypeEntry*) types;
+    Map(Item*) items;
+    Map(TypeEntry*) types;
     SymTable symbol_table;
     TypeTable type_table;
 
@@ -55,7 +56,7 @@ typedef struct Module {
 // yucky
 #define RET_ON_ERR(context) do { if (context->module->has_errors) { return NULL; }  } while(0)
 
-void module_init(Module* module, Span path, Span source);
+void module_init(Module* module, String path, String source);
 void module_deinit(Module* module);
 
 __attribute__((format(printf, 4, 5)))
