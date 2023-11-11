@@ -37,21 +37,6 @@ void sil_panic(const char* format, ...)
     __attribute__((format(printf, 1, 2)))
     __attribute__((noreturn));
 
-
-// Maybe
-enum MaybeType {
-    Yes,
-    No,
-};
-#define Maybe(T) \
-    struct { \
-	enum MaybeType type; \
-	T value; \
-    }
-
-// Used so we can return unnamed generic maybe
-typedef Maybe(void*) MaybeAny;
-
 #endif // !UTIL_H
 
 

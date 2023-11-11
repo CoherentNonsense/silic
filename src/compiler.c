@@ -20,7 +20,7 @@ Module* compiler_compile_module(String path, String source, bool build, bool deb
 
     if (module->has_errors) {
         module_display_errors(module);
-        return NULL;
+        return null;
     }
 
     // print tokens
@@ -41,7 +41,7 @@ Module* compiler_compile_module(String path, String source, bool build, bool deb
 
     if (module->has_errors) {
         module_display_errors(module);
-        return NULL;
+        return null;
     }
 
     if (debug_info) {

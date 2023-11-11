@@ -10,8 +10,8 @@ void typetable_deinit(TypeTable* table) {
 
 TypeEntry* typetable_new_type(TypeTable* table, TypeEntryKind kind, size_t bits) {
     TypeEntry* entry = dynarray_add(table->types);
-    entry->parent_ptr = NULL;
-    entry->parent_ptr_mut = NULL;
+    entry->parent_ptr = null;
+    entry->parent_ptr_mut = null;
     entry->kind = kind;
     entry->bits = bits;
 

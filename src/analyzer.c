@@ -13,7 +13,6 @@ static void setup_primitive_types(Module* module) {
 
     // void
     module->primitives.entry_void = typetable_new_type(&module->type_table, TypeEntryKind_Void, 0);
-
     map_insert(module->types, str_from_lit("void"), &module->primitives.entry_void);
 
     // char
@@ -21,7 +20,11 @@ static void setup_primitive_types(Module* module) {
     module->primitives.entry_c_char->integral.is_signed = true;
     map_insert(module->types, str_from_lit("c_char"), &module->primitives.entry_c_char);
 
-    // integral
+    // bool
+    module->primitives.entry_bool = typetable_new_type(&module->type_table, TypeEntryKind_Bool, 8);
+    map_insert(module->types, str_from_lit("bool"), &module->primitives.entry_bool);
+
+    // unsigned int
     module->primitives.entry_u8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
     module->primitives.entry_u16 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 16);
     module->primitives.entry_u32 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 32);
@@ -37,7 +40,7 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("u32"), &module->primitives.entry_u32);
     map_insert(module->types, str_from_lit("u64"), &module->primitives.entry_u64);
 
-
+    // signed int
     module->primitives.entry_i8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
     module->primitives.entry_i16 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 16);
     module->primitives.entry_i32 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 32);
@@ -58,7 +61,7 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
     switch (type->kind) {
         case TypeKind_Symbol: {
             TypeEntry* entry = map_get(module->types, type->symbol);
-            if (entry == NULL) {
+            if (entry == null) {
                 sil_panic("reference to undeclared type");
             }
             return entry;
@@ -66,7 +69,7 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
         case TypeKind_Ptr: {
             TypeEntry* child = resolve_type(module, type->ptr.to);
             TypeEntry* existing = type->ptr.is_mut ? child->parent_ptr_mut : child->parent_ptr;
-            if (existing != NULL) {
+            if (existing != null) {
                 return existing;
             }
 
@@ -78,6 +81,39 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
 
 static bool type_eq(TypeEntry* a, TypeEntry* b) {
     return a == b;
+}
+
+static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
+    switch (bin_op->kind) {
+        case BinOpKind_Assign: return module->primitives.entry_void;
+
+        case BinOpKind_Add:
+        case BinOpKind_Sub:
+        case BinOpKind_Mul:
+        case BinOpKind_Div: {
+	    TypeEntry* left_type = analyze_expression(module, bin_op->left);
+	    TypeEntry* right_type = analyze_expression(module, bin_op->right);
+
+            if (not type_eq(left_type, right_type)) {
+                sil_panic("binop: incompatable types");
+            }
+
+            return left_type;
+        }
+
+        case BinOpKind_CmpEq:
+        case BinOpKind_CmpNotEq: {
+	    TypeEntry* left_type = analyze_expression(module, bin_op->left);
+	    TypeEntry* right_type = analyze_expression(module, bin_op->right);
+
+            if (not type_eq(left_type, right_type)) {
+                sil_panic("binop: incomparable types");
+            }
+
+            return module->primitives.entry_bool;
+        }
+        default: sil_panic("Analyze Error: unhandled bin op");
+    }
 }
 
 static TypeEntry* analyze_expression(Module* module, Expr* expression) {
@@ -100,7 +136,7 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 	case ExprKind_Let: {
 	    Let* let = expression->let;
 	    SymEntry* existing = symtable_get_local(&module->symbol_table, let->name);
-	    if (existing != NULL) {
+	    if (existing != null) {
 		sil_panic("Redeclaration of variable %.*s", str_format(let->name));
 	    }
 
@@ -124,28 +160,18 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
         case ExprKind_Symbol: {
 	    String symbol = expression->symbol;
 	    SymEntry* existing = symtable_get(&module->symbol_table, symbol);
-	    if (existing == NULL) {
+	    if (existing == null) {
 		sil_panic("Use of undeclared variable %.*s", str_format(symbol));
 	    }
 
             return existing->type;
 	}
-        case ExprKind_BinOp: {
-	    BinOp* binary_operator = expression->binary_operator;
-	    TypeEntry* left_type = analyze_expression(module, binary_operator->left);
-	    TypeEntry* right_type = analyze_expression(module, binary_operator->right);
-
-            if (not type_eq(left_type, right_type)) {
-                sil_panic("binop: incompatable types");
-            }
-
-            return left_type;
-	}
+        case ExprKind_BinOp: { return analyze_bin_op(module, expression->binary_operator); }
         case ExprKind_FnCall: {
 	    FnCall* fn_call = expression->fn_call;
 
 	    Item* item = map_get(module->items, fn_call->name);
-            if (item == NULL) {
+            if (item == null) {
                 sil_panic("Call to undeclared function %.*s", str_format(fn_call->name));
             }
 
@@ -165,14 +191,32 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 
             return resolve_type(module, fn_definition->signature->return_type);
 	}
-	case ExprKind_NumberLit: {
-            return module->primitives.entry_i32;
-	}
+        case ExprKind_If: {
+            If* if_expr = expression->if_expr;
+
+            TypeEntry* condition_type = analyze_expression(module, if_expr->condition);
+            if (condition_type->kind != TypeEntryKind_Bool) {
+                sil_panic("if condition must be a bool");
+            }
+
+            analyze_expression(module, if_expr->then);
+            if (if_expr->otherwise != null) {
+                analyze_expression(module, if_expr->otherwise);
+            }
+
+            return module->primitives.entry_void;
+        }
         case ExprKind_Ret: {
             return analyze_expression(module, expression->ret);
         }
+	case ExprKind_NumberLit: {
+            return module->primitives.entry_i32;
+	}
         case ExprKind_StringLit: {
             return typetable_new_ptr(&module->type_table, module->primitives.entry_c_char, true);
+        }
+        case ExprKind_BoolLit: {
+            return module->primitives.entry_bool;
         }
         default: sil_panic("Analyzer Error: unhandled expression %d", expression->kind);
     }

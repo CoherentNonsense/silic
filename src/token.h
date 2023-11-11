@@ -33,6 +33,7 @@ typedef enum TokenKind {
 
     TokenKind_Equals,
     TokenKind_Equality,
+    TokenKind_Inequality,
     TokenKind_Plus,
     TokenKind_Dash,
     TokenKind_Percent,
@@ -47,7 +48,7 @@ typedef enum TokenKind {
     TokenKind_KeywordElse,
     TokenKind_KeywordTrue,
     TokenKind_KeywordFalse,
-    TokenKind_KeywordStruct,
+    TokenKind_KeywordType,
     TokenKind_KeywordPub,
 } TokenKind;
 

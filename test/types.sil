@@ -1,0 +1,18 @@
+extern fn puts(msg: *c_char) -> i32;
+
+type String {
+    len: u32,
+    data: *u8,
+}
+
+fn main() -> i32 {
+    let a = String { len: 12, data: "Hello, there" };
+
+    if put.a != 0 {
+        puts(a.data);
+    }
+
+    puts("done");
+    
+    ret 0;
+}

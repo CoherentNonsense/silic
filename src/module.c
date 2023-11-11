@@ -42,7 +42,7 @@ void module_add_error(Module* module, Token* token, const char* hint, const char
 
     // hint
     bool has_hint = true;
-    if (hint == NULL) {
+    if (hint == null) {
         has_hint = false;
         hint = "";
     }

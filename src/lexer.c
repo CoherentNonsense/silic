@@ -3,7 +3,7 @@
 #include "token.h"
 #include "util.h"
 
-#include <iso646.h>
+#include <chnlib/logger.h>
 
 #define WHITESPACE \
     ' ': \
@@ -37,6 +37,7 @@ typedef enum LexerState {
     LexerState_Dot,
     LexerState_DotDot,
     LexerState_Slash,
+    LexerState_Bang,
     LexerState_Comment,
     LexerState_MultilineComment,
 } LexerState;
@@ -85,8 +86,8 @@ static void end_token(LexerContext* context) {
             token->kind = TokenKind_KeywordTrue;
         } else if (token_compare_literal(token, "false")) {
             token->kind = TokenKind_KeywordFalse;
-        } else if (token_compare_literal(token, "struct")) {
-            token->kind = TokenKind_KeywordStruct;
+        } else if (token_compare_literal(token, "type")) {
+            token->kind = TokenKind_KeywordType;
         } else if (token_compare_literal(token, "pub")) {
 	    token->kind = TokenKind_KeywordPub;
 	} else if (token_compare_literal(token, "const")) {
@@ -172,7 +173,7 @@ void lexer_lex(Module* module) {
                         break;
                     case '!':
                         begin_token(&context, TokenKind_Bang);
-                        end_token(&context);
+                        context.state = LexerState_Bang;
                         break;
                     case '=':
                         begin_token(&context, TokenKind_Equals);
@@ -290,6 +291,21 @@ void lexer_lex(Module* module) {
 			context.state = LexerState_Start;
 			break;
 		}
+                break;
+
+            case LexerState_Bang:
+                switch (current_char) {
+                    case '=':
+                        context.current_token->kind = TokenKind_Inequality;
+                        end_token(&context);
+                        break;
+                    default:
+                        context.offset -= 1;
+                        context.position.column -= 1;
+                        end_token(&context);
+                        break;
+                }
+                context.state = LexerState_Start;
                 break;
 
 	    case LexerState_Equals:

@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include "token.h"
+#include <chnlib/logger.h>
 #include <chnlib/dynarray.h>
 
 #include <stdio.h>
@@ -96,6 +97,8 @@ static Expr* parse_expression(ParserContext* context);
 static void operator_precedence(TokenKind operator_kind, int* left, int* right) {
     int precedence;
     switch (operator_kind) {
+        case TokenKind_Equality: precedence = OpPrec_Equality; break;
+        case TokenKind_Inequality: precedence = OpPrec_Inequality; break;
 	case TokenKind_Equals: precedence = OpPrec_Assign; break;
 	case TokenKind_Plus: precedence = OpPrec_Add; break;
 	case TokenKind_Dash: precedence = OpPrec_Sub; break;
@@ -162,6 +165,16 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    break;
 	}
+
+        case TokenKind_KeywordTrue:
+        case TokenKind_KeywordFalse: {
+            Token* boolean = consume_token(context);
+
+            expression->kind = ExprKind_BoolLit;
+            expression->boolean = boolean->kind == TokenKind_KeywordTrue;
+
+            break;
+        }
 
 	case TokenKind_KeywordLet: {
 	    expression->kind = ExprKind_Let;
@@ -250,11 +263,10 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		    sil_panic("Expected 'if' or '{' after an else");
 		}
 
-		expression->if_expr->otherwise.type = Yes;
-		expression->if_expr->otherwise.value = parse_expression(context);
+		expression->if_expr->otherwise = parse_expression(context);
                 RET_ON_ERR(context);
 	    } else {
-		expression->if_expr->otherwise.type = No;
+		expression->if_expr->otherwise = null;
 	    }
 
 	    break;
@@ -295,7 +307,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	default: {
             module_add_error(context->module, current_token(context), "expected expression", "expression cannot start with %s", token_string(current_token(context)->kind));
-            return NULL;
+            return null;
 	}
     }
 
@@ -334,7 +346,9 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 	operator->binary_operator = malloc(sizeof(BinOp));
 
 	switch (operator_token->kind) {
-	    case TokenKind_Equals: operator->binary_operator->kind = BinOpKind_Eq; break;
+            case TokenKind_Equality: operator->binary_operator->kind = BinOpKind_CmpEq; break;
+            case TokenKind_Inequality: operator->binary_operator->kind = BinOpKind_CmpNotEq; break;
+	    case TokenKind_Equals: operator->binary_operator->kind = BinOpKind_Assign; break;
 	    case TokenKind_Plus: operator->binary_operator->kind = BinOpKind_Add; break;
 	    case TokenKind_Dash: operator->binary_operator->kind = BinOpKind_Sub; break;
 	    case TokenKind_Star: operator->binary_operator->kind = BinOpKind_Mul; break;
@@ -430,7 +444,7 @@ static FnDef* parse_fn_definition(ParserContext* context, String* name) {
     // TODO: Make block expression
     if (current_token(context)->kind != TokenKind_LBrace) {
         module_add_error(context->module, current_token(context), "expected '{'", "Function body must be a block");
-        return NULL;
+        return null;
     }
 
     fn_decl->body = parse_expression(context);

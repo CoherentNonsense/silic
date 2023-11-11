@@ -13,13 +13,13 @@ static void scope_deinit(Scope* scope) {
 }
 
 void symtable_init(SymTable* symtable) {
-    scope_init(&symtable->root_scope, NULL);
+    scope_init(&symtable->root_scope, null);
     symtable->current_scope = &symtable->root_scope;
 }
 
 void symtable_deinit(SymTable* symtable) {
     Scope* current = symtable->current_scope;
-    while (current != NULL) {
+    while (current != null) {
         scope_deinit(current);
         current = current->parent;
     }
@@ -44,16 +44,16 @@ void symtable_insert(SymTable* const symtable, String const name, SymEntry* cons
 
 SymEntry* symtable_get(SymTable* const symtable, String const name) {
     Scope* scope = symtable->current_scope;
-    while (scope != NULL) {
+    while (scope != null) {
         SymEntry* entry = map_get_ref(scope->symbols, name);
-        if (entry != NULL) {
+        if (entry != null) {
             return entry;
         }
 
         scope = scope->parent;
     }
 
-    return NULL;
+    return null;
 }
 
 SymEntry* symtable_get_local(SymTable* const symtable, String const name) {

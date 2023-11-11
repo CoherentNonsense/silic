@@ -84,7 +84,9 @@ static void generate_binop(CodegenContext* context, BinOp* binop) {
 	case BinOpKind_Sub: write_literal(context, "subi32("); break;
 	case BinOpKind_Mul: write_literal(context, "muli32("); break;
 	case BinOpKind_Div: write_literal(context, "divi32("); break;
-	default: sil_panic("Unhandled binary operator");
+        case BinOpKind_CmpEq: write_literal(context, "eqi32("); break;
+        case BinOpKind_CmpNotEq: write_literal(context, "neqi32("); break;
+        default: sil_panic("Codegen error: Unhandled binary operator");
     }
 
     generate_expression(context, binop->left);
@@ -104,6 +106,11 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    write(context, expression->string_literal.span);
 	    break;
 	}
+
+        case ExprKind_BoolLit: {
+            expression->boolean ? write_literal(context, "true") : write_literal(context, "false");
+            break;
+        }
 
 	case ExprKind_Symbol: {
             write_literal(context, "var_");
@@ -160,9 +167,9 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    generate_expression(context, expression->if_expr->condition);
 	    write_literal(context, ") ");
 	    generate_block(context, expression->if_expr->then->block);
-	    if (expression->if_expr->otherwise.type == Yes) {
+	    if (expression->if_expr->otherwise != null) {
 		write_literal(context, " else ");
-		generate_expression(context, expression->if_expr->otherwise.value);
+		generate_expression(context, expression->if_expr->otherwise);
 	    }
 
 	    break;
@@ -194,7 +201,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    break;
 	}
 			
-	default: sil_panic("Unhandled expression %d", expression->kind);
+        default: sil_panic("Codegen Error: Unhandled expression %d", expression->kind);
     }
 }
 
@@ -300,7 +307,7 @@ void c_codegen_generate(Module* module, bool build) {
     }
 
     context.out_file = fopen("build/ir.c", "wb");
-    if (context.out_file == NULL) {
+    if (context.out_file == null) {
 	    printf("Could not create ir\n");
 	    return;
     }

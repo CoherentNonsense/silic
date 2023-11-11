@@ -78,6 +78,7 @@ typedef struct Type {
 typedef enum ExprKind {
     ExprKind_StringLit,
     ExprKind_NumberLit,
+    ExprKind_BoolLit,
     ExprKind_If,
     ExprKind_Block,
     ExprKind_UnOp,
@@ -105,7 +106,7 @@ typedef struct Block {
 typedef struct If {
     Expr* condition;
     Expr* then;
-    Maybe(Expr*) otherwise;
+    Expr* otherwise;
 } If;
 
 typedef struct MatchArm {
@@ -119,7 +120,9 @@ typedef struct Match {
 } Match;
 
 typedef enum BinOpKind {
-    BinOpKind_Eq,
+    BinOpKind_CmpEq,
+    BinOpKind_CmpNotEq,
+    BinOpKind_Assign,
     BinOpKind_Add,
     BinOpKind_Sub,
     BinOpKind_Mul,
@@ -132,16 +135,20 @@ typedef struct BinOp {
     Expr* right;
 } BinOp;
 
+// 1 + 2 == i = 4 
 typedef enum OpPrec {
     OpPrec_Invalid = 0,
 
-    OpPrec_Assign = 1,
+    OpPrec_Equality = 1,
+    OpPrec_Inequality = 1,
 
-    OpPrec_Add = 2,
-    OpPrec_Sub = 2,
+    OpPrec_Assign = 2,
 
-    OpPrec_Mul = 3,
-    OpPrec_Div = 3,
+    OpPrec_Add = 3,
+    OpPrec_Sub = 3,
+
+    OpPrec_Mul = 4,
+    OpPrec_Div = 4,
 } OpPrec;
 
 typedef struct Let {
@@ -168,6 +175,7 @@ typedef struct Expr {
 	Expr* ret;
 	String symbol;
 	FnCall* fn_call;
+        bool boolean;
     };
 } Expr;
 

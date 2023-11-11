@@ -5,6 +5,12 @@ pub fn main() -> i32{
     let j: i32 = 10;
     let k: i32 = add(i, j);
 
+    if j == sub(k, i) {
+        puts("that's so true");
+    } else {
+        puts("xp");
+    }
+
     puts("done");
 
     return 0;

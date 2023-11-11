@@ -1,5 +1,6 @@
 #include "token.h"
 
+#include "util.h"
 #include "string.h"
 #include <stdio.h>
 
@@ -30,20 +31,30 @@ char* token_string(TokenKind kind) {
 	case TokenKind_RangeInclusive: return "'..='";
         case TokenKind_Equals: return "'='";
 	case TokenKind_Equality: return "'=='";
+        case TokenKind_Inequality: return "'!='";
         case TokenKind_Plus: return "'+'";
         case TokenKind_Dash: return "'-'";
+        case TokenKind_Star: return "'*'";
+        case TokenKind_Slash: return "'/'";
+        case TokenKind_Tilde: return "'~'";
+        case TokenKind_Bang: return "'!'";
+        case TokenKind_Dot: return "'.'";
 	case TokenKind_Percent: return "'%'";
         case TokenKind_KeywordLet: return "keyword 'let'";
 	case TokenKind_KeywordConst: return "keyword 'const'";
         case TokenKind_KeywordFn: return "keyword 'fn'";
 	case TokenKind_KeywordIf: return "keyword 'if'";
+        case TokenKind_KeywordElse: return "keyword 'else'";
 	case TokenKind_KeywordMatch: return "keyword 'match'";
         case TokenKind_KeywordReturn: return "keyword 'return'";
         case TokenKind_KeywordExtern: return "keyword 'extern'";
-	case TokenKind_KeywordStruct: return "keyword 'struct'";
+	case TokenKind_KeywordType: return "keyword 'type'";
 	case TokenKind_KeywordPub: return "keyword 'pub'";
-        default: return "Unknown Token";
+        case TokenKind_KeywordTrue: return "keyword 'true'";
+        case TokenKind_KeywordFalse: return "keyword 'false'";
     }
+
+    sil_panic("unhandled token");
 }
 
 void token_print(Token* token) {
