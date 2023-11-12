@@ -7,6 +7,7 @@
 #define RESET "\033[0m"
 #define ERROR_RED "\033[1;31m"
 #define OTHER_BLUE "\033[34m"
+#define FADED "\033[90m"
 
 void module_init(Module* module, String path, String source) {
     module->path = path;
@@ -62,8 +63,8 @@ void module_display_errors(Module* module) {
         int line_num_width = 0;
         for (int i = error->token->position.line; i > 0; i /= 10) { line_num_width += 1; }
         // print border
-        fprintf(stderr, "    ┌ " OTHER_BLUE "%.*s:%d:%d" RESET " ───\n", str_format(module->path), position.line, position.column);
-        fprintf(stderr, "%.*s" OTHER_BLUE "%.*d" RESET " │ ", 3 - line_num_width, "  ", line_num_width, error->token->position.line);
+        fprintf(stderr, FADED "    ╭─[" RESET "%.*s:%d:%d" FADED "]───\n", str_format(module->path), position.line, position.column);
+        fprintf(stderr, "%.*s%.*d │ " RESET, 3 - line_num_width, "  ", line_num_width, error->token->position.line);
         // print source
         char* start = (char*)error->token->span.data - (position.column - 1);
         while (*start != '\n' && *start != 0) {
@@ -72,11 +73,11 @@ void module_display_errors(Module* module) {
             if (start == error->token->span.data + error->token->span.len - 1) { fprintf(stderr, RESET); }
             start += 1;
         }
-        fprintf(stderr, "\n    │ ");
+        fprintf(stderr, FADED "\n    │ ");
         for (usize i = 0; i < position.column - 1; i++) { putc(' ', stderr); }
         fprintf(stderr, ERROR_RED);
-        for (usize i = 0; i < error->token->span.len; i += 1) { putc('^', stderr); }
-        fprintf(stderr, " %s" RESET "\n    └", error->hint);
-        fprintf(stderr, "─────\n");
+        for (usize i = 0; i < error->token->span.len; i += 1) { fprintf(stderr, "^"); }
+        fprintf(stderr, " %s" FADED "\n    ╰", error->hint);
+        fprintf(stderr, "─────\n" RESET);
     }
 }
