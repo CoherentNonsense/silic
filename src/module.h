@@ -55,8 +55,6 @@ typedef struct Module {
     DynArray(ModuleError) errors;
 } Module;
 
-// yucky
-#define RET_ON_ERR(context) do { if (context->module->has_errors) { return NULL; }  } while(0)
 
 void module_init(Module* module, String path, String source);
 void module_deinit(Module* module);

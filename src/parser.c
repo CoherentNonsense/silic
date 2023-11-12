@@ -2,6 +2,7 @@
 
 #include "util.h"
 #include "token.h"
+#include <chnlib/maybe.h>
 #include <chnlib/logger.h>
 #include <chnlib/dynarray.h>
 
@@ -12,7 +13,6 @@ typedef struct ParserContext {
     Module* module;
     unsigned int token_index;
 } ParserContext;
-
 
 static Token* current_token(ParserContext* context) {
     return &context->module->token_list[context->token_index];
@@ -25,17 +25,25 @@ static Token* consume_token(ParserContext* context) {
     return token;
 }
 
-#define EXPECT_TOKEN_OR_RET(context, kind) expect_token(context, kind); RET_ON_ERR(context)
 static Token* expect_token(ParserContext* context, TokenKind kind) {
     Token* token = consume_token(context);
     if (token->kind != kind) {
-        module_add_error(context->module, token, "unexpected token", "expected %s, found %s", token_string(kind), token_string(token->kind));
+        module_add_error(
+            context->module,
+            token,
+            "unexpected token",
+            "expected %s, found %s",
+            token_string(kind),
+            token_string(token->kind)
+        );
+
+        return null;
     }
 
     return token;
 }
 
-static void expect_semicolon(ParserContext* context) {
+static bool expect_semicolon(ParserContext* context) {
     Token* token = current_token(context);
     if (token->kind != TokenKind_Semicolon) {
         // add the semicolon token for error
@@ -55,9 +63,13 @@ static void expect_semicolon(ParserContext* context) {
             "you fool",
             "missing semicolon"
         );
+
+        return false;
     }
 
     consume_token(context);
+
+    return true;
 }
 
 static Type* parse_type(ParserContext* context) {
@@ -119,11 +131,10 @@ static Block* parse_block(ParserContext* context) {
     Block* block = malloc(sizeof(Block));
     block->statements = dynarray_init();
 
-    EXPECT_TOKEN_OR_RET(context, TokenKind_LBrace);
+    Maybe(expect_token(context, TokenKind_LBrace));
     
     while (current_token(context)->kind != TokenKind_RBrace) {
-	Stmt* statement = parse_statement(context);
-        RET_ON_ERR(context);
+	Stmt* statement = Maybe(parse_statement(context));
 
 	dynarray_push(block->statements, &statement);
     }
@@ -146,20 +157,28 @@ static Expr* parse_primary_expression(ParserContext* context) {
     Expr* expression = malloc(sizeof(Expr)); 
 
     switch (current_token(context)->kind) {
+        case TokenKind_LParen: {
+            consume_token(context);
+            expression = Maybe(parse_expression(context));
+
+            Maybe(expect_token(context, TokenKind_RParen));
+
+            break;
+       }
+
 	case TokenKind_KeywordReturn: {
 	    expression->kind = ExprKind_Ret;
 	    consume_token(context);
 
-	    expression->ret = parse_expression(context);
-            RET_ON_ERR(context);
+	    expression->ret = Maybe(parse_expression(context));
 
 	    break;
 	}
 
 	case TokenKind_NumberLiteral: {
 	    expression->kind = ExprKind_NumberLit;
-	    expression->number_literal = parse_number_literal(context);
-            RET_ON_ERR(context);
+	    expression->number_literal = Maybe(parse_number_literal(context));
+
 	    break;
 	}
 
@@ -181,28 +200,26 @@ static Expr* parse_primary_expression(ParserContext* context) {
         }
 
 	case TokenKind_KeywordLet: {
-	    expression->kind = ExprKind_Let;
-
 	    consume_token(context);
 
-	    Token* name_token = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
-	    expression->let = malloc(sizeof(Let));
+	    expression->kind = ExprKind_Let;
+
+	    Token* name_token = Maybe(expect_token(context, TokenKind_Symbol));
+	    expression->let = Maybe(malloc(sizeof(Let)));
 	    expression->let->name = name_token->span;
 
             Token* maybe_colon = current_token(context);
             if (maybe_colon->kind == TokenKind_Colon) {
                 consume_token(context);
 
-                expression->let->type = parse_type(context);
-                RET_ON_ERR(context);
+                expression->let->type = Maybe(parse_type(context));
             } else {
                 expression->let->type = null;
             }
 
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_Equals);
+	    Maybe(expect_token(context, TokenKind_Equals));
 
-	    expression->let->value = parse_expression(context);
-            RET_ON_ERR(context);
+	    expression->let->value = Maybe(parse_expression(context));
 
 	    break;
 	}
@@ -218,15 +235,14 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    expression->kind = ExprKind_FnCall;
 
-	    expression->fn_call = malloc(sizeof(FnCall));
+	    expression->fn_call = Maybe(malloc(sizeof(FnCall)));
 	    expression->fn_call->name = symbol_token->span;
 
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_LParen);
+	    Maybe(expect_token(context, TokenKind_LParen));
 
 	    expression->fn_call->arguments = dynarray_init();
 	    while (current_token(context)->kind != TokenKind_RParen) {
-		Expr* arg = parse_expression(context);
-                RET_ON_ERR(context);
+		Expr* arg = Maybe(parse_expression(context));
 		dynarray_push(expression->fn_call->arguments, &arg);
 
 		if (current_token(context)->kind != TokenKind_Comma) {
@@ -236,15 +252,14 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		consume_token(context);
 	    }
 
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_RParen);
+	    Maybe(expect_token(context, TokenKind_RParen));
 
 	    break;
 	}
 
 	case TokenKind_LBrace: {
 	    expression->kind = ExprKind_Block;
-	    expression->block = parse_block(context);
-            RET_ON_ERR(context);
+	    expression->block = Maybe(parse_block(context));
 
 	    break;
 	}
@@ -264,15 +279,13 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	case TokenKind_KeywordIf: {
 	    consume_token(context);
 	    expression->kind = ExprKind_If;
-	    expression->if_expr = malloc(sizeof(If));
-	    expression->if_expr->condition = parse_expression(context);
-            RET_ON_ERR(context);
+	    expression->if_expr = Maybe(malloc(sizeof(If)));
+	    expression->if_expr->condition = Maybe(parse_expression(context));
 
 	    if (current_token(context)->kind != TokenKind_LBrace) {
 		sil_panic("Expected block after if");
 	    }
-	    expression->if_expr->then = parse_expression(context);
-            RET_ON_ERR(context);
+	    expression->if_expr->then = Maybe(parse_expression(context));
 	   
 	    // else (if) branch
 	    if (current_token(context)->kind == TokenKind_KeywordElse) {
@@ -280,12 +293,12 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 		Token* next_token = current_token(context);
 		if (next_token->kind != TokenKind_KeywordIf &&
-			next_token->kind != TokenKind_LBrace) {
+		    next_token->kind != TokenKind_LBrace
+                ) {
 		    sil_panic("Expected 'if' or '{' after an else");
 		}
 
-		expression->if_expr->otherwise = parse_expression(context);
-                RET_ON_ERR(context);
+		expression->if_expr->otherwise = Maybe(parse_expression(context));
 	    } else {
 		expression->if_expr->otherwise = null;
 	    }
@@ -296,32 +309,29 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	case TokenKind_KeywordMatch: {
 	    consume_token(context);
 	    expression->kind = ExprKind_Match;
-	    expression->match = malloc(sizeof(Match));
-	    expression->match->arms = dynarray_init();
+	    expression->match = Maybe(malloc(sizeof(Match)));
+	    expression->match->arms = Maybe(dynarray_init());
 
-	    expression->match->condition = parse_expression(context);
-            RET_ON_ERR(context);
+	    expression->match->condition = Maybe(parse_expression(context));
 
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_LBrace);
+	    Maybe(expect_token(context, TokenKind_LBrace));
 	   
 	    while (current_token(context)->kind != TokenKind_RBrace) {
-		MatchArm* arm = malloc(sizeof(MatchArm));
-		arm->pattern = parse_number_literal(context);
-                RET_ON_ERR(context);
+		MatchArm* arm = Maybe(malloc(sizeof(MatchArm)));
+		arm->pattern = Maybe(parse_number_literal(context));
 
-		EXPECT_TOKEN_OR_RET(context, TokenKind_FatArrow);
-		arm->then = parse_expression(context);
-                RET_ON_ERR(context);
+		Maybe(expect_token(context, TokenKind_FatArrow));
+		arm->then = Maybe(parse_expression(context));
 
 		dynarray_push(expression->match->arms, &arm);
 
 		if (current_token(context)->kind != TokenKind_RBrace) {
-		    EXPECT_TOKEN_OR_RET(context, TokenKind_Comma);
+		    Maybe(expect_token(context, TokenKind_Comma));
 		}
 
 	    }
 
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_RBrace);
+	    Maybe(expect_token(context, TokenKind_RBrace));
 
 	    break;
 	}
@@ -335,9 +345,8 @@ static Expr* parse_primary_expression(ParserContext* context) {
                 return null;
             }
 
-            expression->loop = malloc(sizeof(Loop));
-            expression->loop->body = parse_primary_expression(context);
-            RET_ON_ERR(context);
+            expression->loop = Maybe(malloc(sizeof(Loop)));
+            expression->loop->body = Maybe(parse_primary_expression(context));
 
             break;
         }
@@ -352,17 +361,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 }
 
 static Expr* parse_expression_prec(ParserContext* context, int precedence) {
-    Expr* left_expression;
-    if (current_token(context)->kind == TokenKind_LParen) {
-	consume_token(context);
-	left_expression = parse_expression(context);
-        RET_ON_ERR(context);
-
-	EXPECT_TOKEN_OR_RET(context, TokenKind_RParen);
-    } else {
-	left_expression = parse_primary_expression(context);
-        RET_ON_ERR(context);
-    }
+    Expr* left_expression = Maybe(parse_primary_expression(context));
 
     while (1) {
 	Token* operator_token = current_token(context);
@@ -375,12 +374,11 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 
 	consume_token(context);
 
-	Expr* right_expression = parse_expression_prec(context, right);
-        RET_ON_ERR(context);
+	Expr* right_expression = Maybe(parse_expression_prec(context, right));
 
-	Expr* operator = malloc(sizeof(Expr));
+	Expr* operator = Maybe(malloc(sizeof(Expr)));
 	operator->kind = ExprKind_BinOp;
-	operator->binary_operator = malloc(sizeof(BinOp));
+	operator->binary_operator = Maybe(malloc(sizeof(BinOp)));
 
 	switch (operator_token->kind) {
             case TokenKind_KeywordAnd: operator->binary_operator->kind = BinOpKind_And; break;
@@ -411,17 +409,15 @@ static Expr* parse_expression(ParserContext* context) {
 }
 
 static Stmt* parse_statement(ParserContext* context) {
-    Stmt* statement = malloc(sizeof(Stmt));
+    Stmt* statement = Maybe(malloc(sizeof(Stmt)));
 
     switch (current_token(context)->kind) {
 	default: {
 	    statement->kind = StmtKind_Expr;
-	    statement->expression = parse_expression(context);
-            RET_ON_ERR(context);
+	    statement->expression = Maybe(parse_expression(context));
 	   
 	    if (!parser_should_remove_statement_semicolon(statement->expression)) {
-		expect_semicolon(context);
-                RET_ON_ERR(context);
+		Maybe(expect_semicolon(context));
 	    }
 
 	    break;
@@ -431,26 +427,25 @@ static Stmt* parse_statement(ParserContext* context) {
 }
 
 static FnSig* parse_fn_signature(ParserContext* context, String* name) {
-    FnSig* fn_sig = malloc(sizeof(FnSig));
+    FnSig* fn_sig = Maybe(malloc(sizeof(FnSig)));
 
-    EXPECT_TOKEN_OR_RET(context, TokenKind_KeywordFn);
+    Maybe(expect_token(context, TokenKind_KeywordFn));
 
-    Token* name_token = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
+    Token* name_token = Maybe(expect_token(context, TokenKind_Symbol));
     *name = name_token->span;
 
-    EXPECT_TOKEN_OR_RET(context, TokenKind_LParen);
+    Maybe(expect_token(context, TokenKind_LParen));
 
-    fn_sig->parameters = dynarray_init();
+    fn_sig->parameters = Maybe(dynarray_init());
     while (current_token(context)->kind != TokenKind_RParen) {
-	FnParam* parameter = malloc(sizeof(FnParam));
+	FnParam* parameter = Maybe(malloc(sizeof(FnParam)));
 
-	Token* name_token = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
+	Token* name_token = Maybe(expect_token(context, TokenKind_Symbol));
 	parameter->name = name_token->span;
 
-	EXPECT_TOKEN_OR_RET(context, TokenKind_Colon);
+	Maybe(expect_token(context, TokenKind_Colon));
 
-	parameter->type = parse_type(context);
-        RET_ON_ERR(context);
+	parameter->type = Maybe(parse_type(context));
 
 	dynarray_push(fn_sig->parameters, &parameter);
 
@@ -461,14 +456,13 @@ static FnSig* parse_fn_signature(ParserContext* context, String* name) {
 	consume_token(context);
     }
 
-    EXPECT_TOKEN_OR_RET(context, TokenKind_RParen);
+    Maybe(expect_token(context, TokenKind_RParen));
 
     if (current_token(context)->kind == TokenKind_Arrow) {
 	consume_token(context);
-	fn_sig->return_type = parse_type(context);
-        RET_ON_ERR(context);
+	fn_sig->return_type = Maybe(parse_type(context));
     } else {
-	Type* void_type = malloc(sizeof(Type));
+	Type* void_type = Maybe(malloc(sizeof(Type)));
 	void_type->kind = TypeKind_Void;
 	fn_sig->return_type = void_type;
     }
@@ -477,10 +471,9 @@ static FnSig* parse_fn_signature(ParserContext* context, String* name) {
 }
 
 static FnDef* parse_fn_definition(ParserContext* context, String* name) {
-    FnDef* fn_decl = malloc(sizeof(FnDef));
+    FnDef* fn_decl = Maybe(malloc(sizeof(FnDef)));
 
-    fn_decl->signature = parse_fn_signature(context, name);
-    RET_ON_ERR(context);
+    fn_decl->signature = Maybe(parse_fn_signature(context, name));
 
     // TODO: Make block expression
     if (current_token(context)->kind != TokenKind_LBrace) {
@@ -488,27 +481,24 @@ static FnDef* parse_fn_definition(ParserContext* context, String* name) {
         return null;
     }
 
-    fn_decl->body = parse_primary_expression(context);
-    RET_ON_ERR(context);
+    fn_decl->body = Maybe(parse_primary_expression(context));
 
     return fn_decl;
 }
 
 static Constant* parse_constant(ParserContext* context, String* name) {
-    Constant* constant = malloc(sizeof(Constant));
+    Constant* constant = Maybe(malloc(sizeof(Constant)));
 
-    Token* ident = EXPECT_TOKEN_OR_RET(context, TokenKind_Symbol);
+    Token* ident = Maybe(expect_token(context, TokenKind_Symbol));
     *name = ident->span;
 
-    EXPECT_TOKEN_OR_RET(context, TokenKind_Colon);
+    Maybe(expect_token(context, TokenKind_Colon));
 
-    constant->type = parse_type(context);
-    RET_ON_ERR(context);
+    constant->type = Maybe(parse_type(context));
 
-    EXPECT_TOKEN_OR_RET(context, TokenKind_Equals);
+    Maybe(expect_token(context, TokenKind_Equals));
 
-    constant->value = parse_expression(context);
-    RET_ON_ERR(context);
+    constant->value = Maybe(parse_expression(context));
 
     return constant;
 }
@@ -526,8 +516,7 @@ static Item* parse_item(ParserContext* context) {
     switch (current_token(context)->kind) {
 	case TokenKind_KeywordFn: {
 	    item->kind = ItemKind_FnDef;
-	    item->fn_definition = parse_fn_definition(context, &item->name);
-            RET_ON_ERR(context);
+	    item->fn_definition = Maybe(parse_fn_definition(context, &item->name));
 	    break;
 	}
 
@@ -536,7 +525,7 @@ static Item* parse_item(ParserContext* context) {
 	    consume_token(context);
 	    item->extern_fn = malloc(sizeof(ExternFn));
 	    item->extern_fn->signature = parse_fn_signature(context, &item->name);
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_Semicolon);
+	    Maybe(expect_token(context, TokenKind_Semicolon));
 	    break;
 	}
 
@@ -544,11 +533,10 @@ static Item* parse_item(ParserContext* context) {
 	    item->kind = ItemKind_Const;
             consume_token(context);
 
-	    item->constant = parse_constant(context, &item->name);
-            RET_ON_ERR(context);
+	    item->constant = Maybe(parse_constant(context, &item->name));
 
-            expect_semicolon(context);
-            RET_ON_ERR(context);
+            Maybe(expect_semicolon(context));
+
 	    break;
 	}
 	
@@ -567,12 +555,12 @@ static Item* parse_item(ParserContext* context) {
 }
 
 static AstRoot* parse_root(ParserContext* context) {
-    AstRoot* root = malloc(sizeof(AstRoot));
+    AstRoot* root = Maybe(malloc(sizeof(AstRoot)));
+
     root->items = dynarray_init();
 
     while (current_token(context)->kind != TokenKind_Eof) {
-	Item* item = parse_item(context);
-        RET_ON_ERR(context);
+	Item* item = Maybe(parse_item(context));
 
 	dynarray_push(root->items, &item);
     }
