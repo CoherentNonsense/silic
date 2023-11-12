@@ -34,6 +34,8 @@ typedef enum TokenKind {
     TokenKind_Equals,
     TokenKind_Equality,
     TokenKind_Inequality,
+    TokenKind_LessThan,
+    TokenKind_GreaterThan,
     TokenKind_Plus,
     TokenKind_Dash,
     TokenKind_Percent,
@@ -44,12 +46,18 @@ typedef enum TokenKind {
     TokenKind_KeywordReturn,
     TokenKind_KeywordExtern,
     TokenKind_KeywordIf,
-    TokenKind_KeywordMatch,
     TokenKind_KeywordElse,
+    TokenKind_KeywordMatch,
     TokenKind_KeywordTrue,
     TokenKind_KeywordFalse,
     TokenKind_KeywordType,
     TokenKind_KeywordPub,
+    TokenKind_KeywordLoop,
+    TokenKind_KeywordBreak,
+    TokenKind_KeywordContinue,
+    TokenKind_KeywordAnd,
+    TokenKind_KeywordOr,
+    TokenKind_KeywordNot,
 } TokenKind;
 
 typedef struct TextPosition {

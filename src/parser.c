@@ -97,8 +97,12 @@ static Expr* parse_expression(ParserContext* context);
 static void operator_precedence(TokenKind operator_kind, int* left, int* right) {
     int precedence;
     switch (operator_kind) {
-        case TokenKind_Equality: precedence = OpPrec_Equality; break;
-        case TokenKind_Inequality: precedence = OpPrec_Inequality; break;
+        case TokenKind_KeywordAnd: precedence = OpPrec_And; break;
+        case TokenKind_KeywordOr: precedence = OpPrec_Or; break;
+        case TokenKind_GreaterThan: precedence = OpPrec_CmpGt; break;
+        case TokenKind_LessThan: precedence = OpPrec_CmpLt; break;
+        case TokenKind_Equality: precedence = OpPrec_CmpEq; break;
+        case TokenKind_Inequality: precedence = OpPrec_CmpNotEq; break;
 	case TokenKind_Equals: precedence = OpPrec_Assign; break;
 	case TokenKind_Plus: precedence = OpPrec_Add; break;
 	case TokenKind_Dash: precedence = OpPrec_Sub; break;
@@ -185,10 +189,15 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->let = malloc(sizeof(Let));
 	    expression->let->name = name_token->span;
 
-	    EXPECT_TOKEN_OR_RET(context, TokenKind_Colon);
+            Token* maybe_colon = current_token(context);
+            if (maybe_colon->kind == TokenKind_Colon) {
+                consume_token(context);
 
-	    expression->let->type = parse_type(context);
-            RET_ON_ERR(context);
+                expression->let->type = parse_type(context);
+                RET_ON_ERR(context);
+            } else {
+                expression->let->type = null;
+            }
 
 	    EXPECT_TOKEN_OR_RET(context, TokenKind_Equals);
 
@@ -239,6 +248,18 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    break;
 	}
+
+        case TokenKind_KeywordBreak: {
+            consume_token(context);
+            expression->kind = ExprKind_Break;
+            break;
+        }
+
+        case TokenKind_KeywordContinue: {
+            consume_token(context);
+            expression->kind = ExprKind_Continue;
+            break;
+        }
 
 	case TokenKind_KeywordIf: {
 	    consume_token(context);
@@ -305,6 +326,22 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    break;
 	}
 
+        case TokenKind_KeywordLoop: {
+            consume_token(context);
+            expression->kind = ExprKind_Loop;
+
+            if (current_token(context)->kind != TokenKind_LBrace) {
+                module_add_error(context->module, current_token(context), "expected '{'", "loop body must be a block");
+                return null;
+            }
+
+            expression->loop = malloc(sizeof(Loop));
+            expression->loop->body = parse_primary_expression(context);
+            RET_ON_ERR(context);
+
+            break;
+        }
+
 	default: {
             module_add_error(context->module, current_token(context), "expected expression", "expression cannot start with %s", token_string(current_token(context)->kind));
             return null;
@@ -346,6 +383,10 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 	operator->binary_operator = malloc(sizeof(BinOp));
 
 	switch (operator_token->kind) {
+            case TokenKind_KeywordAnd: operator->binary_operator->kind = BinOpKind_And; break;
+            case TokenKind_KeywordOr: operator->binary_operator->kind = BinOpKind_Or; break;
+            case TokenKind_LessThan: operator->binary_operator->kind = BinOpKind_CmpLt; break;
+            case TokenKind_GreaterThan: operator->binary_operator->kind = BinOpKind_CmpGt; break;
             case TokenKind_Equality: operator->binary_operator->kind = BinOpKind_CmpEq; break;
             case TokenKind_Inequality: operator->binary_operator->kind = BinOpKind_CmpNotEq; break;
 	    case TokenKind_Equals: operator->binary_operator->kind = BinOpKind_Assign; break;
@@ -447,7 +488,7 @@ static FnDef* parse_fn_definition(ParserContext* context, String* name) {
         return null;
     }
 
-    fn_decl->body = parse_expression(context);
+    fn_decl->body = parse_primary_expression(context);
     RET_ON_ERR(context);
 
     return fn_decl;
@@ -551,6 +592,7 @@ bool parser_should_remove_statement_semicolon(Expr* expression) {
     return (
 	expression->kind == ExprKind_If ||
 	expression->kind == ExprKind_Match ||
-	expression->kind == ExprKind_Block
+	expression->kind == ExprKind_Block ||
+        expression->kind == ExprKind_Loop
     );
 }

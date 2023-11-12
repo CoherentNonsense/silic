@@ -32,6 +32,8 @@ char* token_string(TokenKind kind) {
         case TokenKind_Equals: return "'='";
 	case TokenKind_Equality: return "'=='";
         case TokenKind_Inequality: return "'!='";
+        case TokenKind_LessThan: return "'<'";
+        case TokenKind_GreaterThan: return "'>'";
         case TokenKind_Plus: return "'+'";
         case TokenKind_Dash: return "'-'";
         case TokenKind_Star: return "'*'";
@@ -52,6 +54,12 @@ char* token_string(TokenKind kind) {
 	case TokenKind_KeywordPub: return "keyword 'pub'";
         case TokenKind_KeywordTrue: return "keyword 'true'";
         case TokenKind_KeywordFalse: return "keyword 'false'";
+        case TokenKind_KeywordLoop: return "keyword 'loop'";
+        case TokenKind_KeywordBreak: return "keyword 'break'";
+        case TokenKind_KeywordContinue: return "keyword 'continue'";
+        case TokenKind_KeywordAnd: return "keyword 'and'";
+        case TokenKind_KeywordOr: return "keyword 'or'";
+        case TokenKind_KeywordNot: return "keyword 'not'";
     }
 
     sil_panic("unhandled token");

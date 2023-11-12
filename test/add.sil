@@ -1,12 +1,14 @@
 extern fn puts(message: *c_char) -> i32;
+extern fn exit(status: i32);
 
 pub fn main() -> i32{
-    let i: i32 = 10;
-    let j: i32 = 10;
-    let k: i32 = add(i, j);
+    let i = 10;
+    let j = 10;
+    let k = add(i, j);
 
     if j == sub(k, i) {
         puts("that's so true");
+        exit(0);
     } else {
         puts("xp");
     }

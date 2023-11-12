@@ -6,6 +6,7 @@
 #include "analyzer.h"
 #include "c_codegen.h"
 #include "util.h"
+#include <chnlib/logger.h>
 #include <stdio.h>
 
 
@@ -34,9 +35,11 @@ Module* compiler_compile_module(String path, String source, bool build, bool deb
         }
     }
 
-
     // ------- //
     // Parsing //
+    if (debug_info) {
+        printf("Parsing...\n");
+    }
     parser_parse(module);
 
     if (module->has_errors) {

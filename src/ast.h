@@ -88,6 +88,9 @@ typedef enum ExprKind {
     ExprKind_Ret,
     ExprKind_Symbol,
     ExprKind_FnCall,
+    ExprKind_Loop,
+    ExprKind_Break,
+    ExprKind_Continue,
 } ExprKind;
 
 typedef struct StringLit {
@@ -119,9 +122,17 @@ typedef struct Match {
     DynArray(MatchArm*) arms;
 } Match;
 
+typedef struct Loop {
+    Expr* body;
+} Loop;
+
 typedef enum BinOpKind {
+    BinOpKind_And,
+    BinOpKind_Or,
     BinOpKind_CmpEq,
     BinOpKind_CmpNotEq,
+    BinOpKind_CmpGt,
+    BinOpKind_CmpLt,
     BinOpKind_Assign,
     BinOpKind_Add,
     BinOpKind_Sub,
@@ -135,20 +146,25 @@ typedef struct BinOp {
     Expr* right;
 } BinOp;
 
-// 1 + 2 == i = 4 
 typedef enum OpPrec {
     OpPrec_Invalid = 0,
 
-    OpPrec_Equality = 1,
-    OpPrec_Inequality = 1,
+    OpPrec_And = 5,
+    OpPrec_Or = 5,
 
-    OpPrec_Assign = 2,
+    OpPrec_CmpEq = 10,
+    OpPrec_CmpNotEq = 10,
 
-    OpPrec_Add = 3,
-    OpPrec_Sub = 3,
+    OpPrec_CmpGt = 15,
+    OpPrec_CmpLt = 15,
 
-    OpPrec_Mul = 4,
-    OpPrec_Div = 4,
+    OpPrec_Assign = 20,
+
+    OpPrec_Add = 30,
+    OpPrec_Sub = 30,
+
+    OpPrec_Mul = 40,
+    OpPrec_Div = 40,
 } OpPrec;
 
 typedef struct Let {
@@ -176,6 +192,7 @@ typedef struct Expr {
 	String symbol;
 	FnCall* fn_call;
         bool boolean;
+        Loop* loop;
     };
 } Expr;
 

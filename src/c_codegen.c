@@ -80,13 +80,18 @@ static void generate_number_literal(CodegenContext* context, NumberLit* number_l
 
 static void generate_binop(CodegenContext* context, BinOp* binop) {
     switch (binop->kind) {
+        case BinOpKind_CmpEq: write_literal(context, "eqi32("); break;
+        case BinOpKind_CmpNotEq: write_literal(context, "neqi32("); break;
+        case BinOpKind_CmpGt: write_literal(context, "gti32("); break;
+        case BinOpKind_CmpLt: write_literal(context, "lti32("); break;
+        case BinOpKind_And: write_literal(context, "and("); break;
+        case BinOpKind_Or: write_literal(context, "or("); break;
+        case BinOpKind_Assign: write_literal(context, "wri32(&"); break;
 	case BinOpKind_Add: write_literal(context, "addi32("); break;
 	case BinOpKind_Sub: write_literal(context, "subi32("); break;
 	case BinOpKind_Mul: write_literal(context, "muli32("); break;
 	case BinOpKind_Div: write_literal(context, "divi32("); break;
-        case BinOpKind_CmpEq: write_literal(context, "eqi32("); break;
-        case BinOpKind_CmpNotEq: write_literal(context, "neqi32("); break;
-        default: sil_panic("Codegen error: Unhandled binary operator");
+        default: sil_panic("Codegen error: Unhandled binary operator %d", binop->kind);
     }
 
     generate_expression(context, binop->left);
@@ -138,7 +143,11 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	}
 
 	case ExprKind_Let: {
-	    generate_type(context, expression->let->type);
+            if (expression->let->type == null) {
+                write_literal(context, "i32");
+            } else {
+                generate_type(context, expression->let->type);
+            }
 	    write_literal(context, " ");
             write_literal(context, "var_");
 	    write(context, expression->let->name);
@@ -200,7 +209,16 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	    write_literal(context, "}");
 	    break;
 	}
-			
+
+        case ExprKind_Loop: {
+            write_literal(context, "while (true) ");
+            generate_expression(context, expression->loop->body);
+            break;
+        }
+
+        case ExprKind_Break: { write_literal(context, "break"); break; }
+        case ExprKind_Continue: { write_literal(context, "continue"); break; }
+
         default: sil_panic("Codegen Error: Unhandled expression %d", expression->kind);
     }
 }

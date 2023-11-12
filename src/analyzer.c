@@ -58,7 +58,10 @@ static void setup_primitive_types(Module* module) {
 }
 
 static TypeEntry* resolve_type(Module* module, Type* type) {
+    if (type == null) { return null; }
     switch (type->kind) {
+        case TypeKind_Void: return module->primitives.entry_void;
+
         case TypeKind_Symbol: {
             TypeEntry* entry = map_get(module->types, type->symbol);
             if (entry == null) {
@@ -66,6 +69,7 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
             }
             return entry;
         }
+
         case TypeKind_Ptr: {
             TypeEntry* child = resolve_type(module, type->ptr.to);
             TypeEntry* existing = type->ptr.is_mut ? child->parent_ptr_mut : child->parent_ptr;
@@ -75,6 +79,7 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
 
             return typetable_new_ptr(&module->type_table, child, type->ptr.is_mut);
         }
+
         default: sil_panic("cannot resolve type %d", type->kind);
     }
 }
@@ -101,6 +106,20 @@ static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
             return left_type;
         }
 
+        case BinOpKind_And:
+        case BinOpKind_Or: {
+            TypeEntry* left_type = analyze_expression(module, bin_op->left);
+            TypeEntry* right_type = analyze_expression(module, bin_op->right);
+    
+            if (left_type->kind != TypeEntryKind_Bool or right_type->kind != TypeEntryKind_Bool) {
+                sil_panic("and/or can only compare boolean expressions");
+            }
+
+            return module->primitives.entry_bool;
+        }
+
+        case BinOpKind_CmpGt:
+        case BinOpKind_CmpLt:
         case BinOpKind_CmpEq:
         case BinOpKind_CmpNotEq: {
 	    TypeEntry* left_type = analyze_expression(module, bin_op->left);
@@ -143,7 +162,7 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
             TypeEntry* explicit_type = resolve_type(module, let->type);
 	    TypeEntry* implicit_type = analyze_expression(module, let->value);
 
-	    if (not type_eq(explicit_type, implicit_type)) {
+	    if (explicit_type != null and not type_eq(explicit_type, implicit_type)) {
 		sil_panic(
                     "Sem Analysis Error: Implicit type conversion not allowed %d %d",
                     explicit_type->kind,
@@ -152,10 +171,10 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 	    }
 
             SymEntry entry;
-            entry.type = explicit_type;
+            entry.type = implicit_type;
 	    symtable_insert(&module->symbol_table, let->name, &entry);
 
-            return explicit_type;
+            return module->primitives.entry_void;
 	}
         case ExprKind_Symbol: {
 	    String symbol = expression->symbol;
@@ -204,6 +223,14 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
                 analyze_expression(module, if_expr->otherwise);
             }
 
+            return module->primitives.entry_void;
+        }
+        case ExprKind_Loop: {
+            analyze_expression(module, expression->loop->body);
+            return module->primitives.entry_void;
+        }
+        case ExprKind_Continue:
+        case ExprKind_Break: {
             return module->primitives.entry_void;
         }
         case ExprKind_Ret: {

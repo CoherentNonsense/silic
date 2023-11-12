@@ -92,7 +92,19 @@ static void end_token(LexerContext* context) {
 	    token->kind = TokenKind_KeywordPub;
 	} else if (token_compare_literal(token, "const")) {
 	    token->kind = TokenKind_KeywordConst;
-	}
+	} else if (token_compare_literal(token, "loop")) {
+	    token->kind = TokenKind_KeywordLoop;
+	} else if (token_compare_literal(token, "break")) {
+	    token->kind = TokenKind_KeywordBreak;
+	} else if (token_compare_literal(token, "continue")) {
+	    token->kind = TokenKind_KeywordContinue;
+        } else if (token_compare_literal(token, "and")) {
+	    token->kind = TokenKind_KeywordAnd;
+        } else if (token_compare_literal(token, "or")) {
+	    token->kind = TokenKind_KeywordOr;
+        } else if (token_compare_literal(token, "not")) {
+	    token->kind = TokenKind_KeywordNot;
+        }
     }
 }
 
@@ -174,6 +186,14 @@ void lexer_lex(Module* module) {
                     case '!':
                         begin_token(&context, TokenKind_Bang);
                         context.state = LexerState_Bang;
+                        break;
+                    case '<':
+                        begin_token(&context, TokenKind_LessThan);
+                        end_token(&context);
+                        break;
+                    case '>':
+                        begin_token(&context, TokenKind_GreaterThan);
+                        end_token(&context);
                         break;
                     case '=':
                         begin_token(&context, TokenKind_Equals);

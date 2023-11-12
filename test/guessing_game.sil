@@ -1,0 +1,24 @@
+extern fn puts(message: *c_char) -> i32;
+
+pub fn main() -> i32 {
+    let number = 120;
+    
+    let i = 0;
+    loop {
+        i = i + 1;
+
+        if 4 < i and i < 8 {
+            puts("between 4 and 8");
+        }
+
+        if i == 4 or i == 2 {
+            puts("either 4 or 2");
+        }
+
+        if i == 10 {
+            break;
+        }
+    }
+
+    puts("done!");
+}
