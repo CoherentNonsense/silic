@@ -51,7 +51,7 @@ typedef struct LexerContext {
 } LexerContext;
 
 static char get_char(LexerContext* context, unsigned int offset) {
-    return *(context->module->source.data + offset);
+    return *(context->module->source.ptr + offset);
 }
 
 static void begin_token(LexerContext* context, TokenKind kind) {
@@ -60,15 +60,19 @@ static void begin_token(LexerContext* context, TokenKind kind) {
     Token* token = context->current_token;
     token->kind = kind;
     token->position = context->position;
-    token->span.data = context->module->source.data + context->offset;
+    token->span.ptr = context->module->source.ptr + context->offset;
 }
 
 static void end_token(LexerContext* context) {
     Token* token = context->current_token;
-    token->span.len = (context->offset - (usize)(token->span.data - context->module->source.data)) + 1;
+    token->span.len = (context->offset - (usize)(token->span.ptr - context->module->source.ptr)) + 1;
 
     if (token->kind == TokenKind_Symbol) {
-        if (token_compare_literal(token, "fn")) {
+        if (token_compare_literal(token, "asm")) {
+            token->kind = TokenKind_KeywordAsm;
+        } else if (token_compare_literal(token, "volatile")) {
+            token->kind = TokenKind_KeywordVolatile;
+        } else if (token_compare_literal(token, "fn")) {
             token->kind = TokenKind_KeywordFn;
         } else if (token_compare_literal(token, "return")) {
             token->kind = TokenKind_KeywordReturn;
@@ -104,6 +108,8 @@ static void end_token(LexerContext* context) {
 	    token->kind = TokenKind_KeywordOr;
         } else if (token_compare_literal(token, "not")) {
 	    token->kind = TokenKind_KeywordNot;
+        } else if (token_compare_literal(token, "mut")) {
+            token->kind = TokenKind_KeywordMut;
         }
     }
 }

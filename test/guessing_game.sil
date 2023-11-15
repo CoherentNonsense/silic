@@ -1,6 +1,7 @@
 extern fn puts(message: *c_char) -> i32;
+extern fn getline(buffer: **mut c_char, len: *usize, stream: i32) -> usize;
 
-pub fn main() -> i32 {
+pub fn main() i-> i32 {
     let number = 120;
     
     let i = 0;

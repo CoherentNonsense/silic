@@ -40,6 +40,8 @@ typedef enum TokenKind {
     TokenKind_Dash,
     TokenKind_Percent,
 
+    TokenKind_KeywordAsm,
+    TokenKind_KeywordVolatile,
     TokenKind_KeywordLet,
     TokenKind_KeywordConst,
     TokenKind_KeywordFn,
@@ -58,6 +60,7 @@ typedef enum TokenKind {
     TokenKind_KeywordAnd,
     TokenKind_KeywordOr,
     TokenKind_KeywordNot,
+    TokenKind_KeywordMut,
 } TokenKind;
 
 typedef struct TextPosition {

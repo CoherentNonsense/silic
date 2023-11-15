@@ -39,6 +39,8 @@ typedef struct Module {
         TypeEntry* entry_c_char;
 
         TypeEntry* entry_bool;
+
+        TypeEntry* entry_usize;
         
         TypeEntry* entry_u8;
         TypeEntry* entry_u16;

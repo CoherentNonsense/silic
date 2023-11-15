@@ -25,7 +25,7 @@ static Token* consume_token(ParserContext* context) {
     return token;
 }
 
-static Token* expect_token(ParserContext* context, TokenKind kind) {
+static Maybe(Token*) expect_token(ParserContext* context, TokenKind kind) {
     Token* token = consume_token(context);
     if (token->kind != kind) {
         module_add_error(
@@ -37,13 +37,13 @@ static Token* expect_token(ParserContext* context, TokenKind kind) {
             token_string(token->kind)
         );
 
-        return null;
+        return None;
     }
 
-    return token;
+    return Some(token);
 }
 
-static bool expect_semicolon(ParserContext* context) {
+static Maybe(u8) expect_semicolon(ParserContext* context) {
     Token* token = current_token(context);
     if (token->kind != TokenKind_Semicolon) {
         // add the semicolon token for error
@@ -54,7 +54,7 @@ static bool expect_semicolon(ParserContext* context) {
         semicolon->position = prev_token->position;
         semicolon->span = prev_token->span;
         semicolon->position.column += prev_token->span.len;
-        semicolon->span.data += prev_token->span.len;
+        semicolon->span.ptr += prev_token->span.len;
         semicolon->span.len = 1;
 
         module_add_error(
@@ -64,15 +64,15 @@ static bool expect_semicolon(ParserContext* context) {
             "missing semicolon"
         );
 
-        return false;
+        return None;
     }
 
     consume_token(context);
 
-    return true;
+    return Some((u8)0);
 }
 
-static Type* parse_type(ParserContext* context) {
+static Maybe(Type*) parse_type(ParserContext* context) {
     Type* type = malloc(sizeof(Type));
     
     Token* token = consume_token(context);
@@ -80,7 +80,13 @@ static Type* parse_type(ParserContext* context) {
     switch (token->kind) {
 	case TokenKind_Star: {
 	    type->kind = TypeKind_Ptr;
-	    type->ptr.to = parse_type(context);
+            if (current_token(context)->kind == TokenKind_KeywordMut) {
+                consume_token(context);
+                type->ptr.is_mut = true;
+            } else {
+                type->ptr.is_mut = false;
+            }
+	    type->ptr.to = try(parse_type(context));
 
 	    break;
 	}
@@ -100,11 +106,11 @@ static Type* parse_type(ParserContext* context) {
 	}
     }
 
-    return type;
+    return Some(type);
 }
 
-static Stmt* parse_statement(ParserContext* context);
-static Expr* parse_expression(ParserContext* context);
+static Maybe(Stmt*) parse_statement(ParserContext* context);
+static Maybe(Expr*) parse_expression(ParserContext* context);
 
 static void operator_precedence(TokenKind operator_kind, int* left, int* right) {
     int precedence;
@@ -127,41 +133,113 @@ static void operator_precedence(TokenKind operator_kind, int* left, int* right) 
     *right = precedence * 2;
 }
 
-static Block* parse_block(ParserContext* context) {
+static Maybe(Block*) parse_block(ParserContext* context) {
     Block* block = malloc(sizeof(Block));
     block->statements = dynarray_init();
 
-    Maybe(expect_token(context, TokenKind_LBrace));
+    try(expect_token(context, TokenKind_LBrace));
     
     while (current_token(context)->kind != TokenKind_RBrace) {
-	Stmt* statement = Maybe(parse_statement(context));
+	Stmt* statement = try(parse_statement(context));
 
 	dynarray_push(block->statements, &statement);
     }
 
     consume_token(context);
 
-    return block;
+    return Some(block);
 }
 
-static NumberLit* parse_number_literal(ParserContext* context) {
+static Maybe(NumberLit*) parse_number_literal(ParserContext* context) {
     NumberLit* lit = malloc(sizeof(NumberLit));
 
     Token* token = consume_token(context);
     lit->span = token->span;
 
-    return lit;
+    return Some(lit);
 }
 
-static Expr* parse_primary_expression(ParserContext* context) {
+// TODO: maybe make this part of block
+static Maybe(Asm*) parse_asmblock(ParserContext* context) {
+    Asm* asm = malloc(sizeof(Asm));
+    asm->inputs = dynarray_init();
+    asm->outputs = dynarray_init();
+    asm->clobbers = dynarray_init();
+    asm->source = dynarray_init();
+
+    // consume 'asm'
+    consume_token(context);
+
+    try(expect_token(context, TokenKind_KeywordVolatile));
+
+    if (current_token(context)->kind == TokenKind_LParen) {
+        consume_token(context);
+
+        while (true) {
+            Token* reg_tok = try(expect_token(context, TokenKind_Symbol));
+
+            if (current_token(context)->kind == TokenKind_Equals) {
+                consume_token(context);
+
+                AsmInput* param = dynarray_add(asm->inputs);
+                param->reg = reg_tok->span;
+
+                param->val = try(parse_expression(context));
+            } else {
+                String* clobber = dynarray_add(asm->clobbers);
+                *clobber = reg_tok->span;
+            }
+
+            if (current_token(context)->kind != TokenKind_Comma) {
+                break;
+            }
+
+            // consume ','
+            consume_token(context);
+        }
+
+        // consume ')'
+        consume_token(context);
+    }
+
+    if (current_token(context)->kind == TokenKind_Arrow) {
+        consume_token(context);
+
+        Token* reg_tok = try(expect_token(context, TokenKind_Symbol));
+        String* output = dynarray_add(asm->outputs);
+
+        *output = reg_tok->span;
+    }
+
+    try(expect_token(context, TokenKind_LBrace));
+
+    while (current_token(context)->kind != TokenKind_RBrace) {
+        Token* line_tok = try(expect_token(context, TokenKind_StringLiteral));
+        StringLit* line = dynarray_add(asm->source);
+        line->span = line_tok->span;
+    }
+
+    consume_token(context);
+
+    return Some(asm);
+}
+
+static Maybe(Expr*) parse_primary_expression(ParserContext* context) {
     Expr* expression = malloc(sizeof(Expr)); 
 
     switch (current_token(context)->kind) {
+        case TokenKind_KeywordAsm: {
+            expression->kind = ExprKind_Asm;
+            expression->asm = try(parse_asmblock(context));
+
+            break;
+        }
+
         case TokenKind_LParen: {
             consume_token(context);
-            expression = Maybe(parse_expression(context));
+            expression = try(parse_expression(context));
 
-            Maybe(expect_token(context, TokenKind_RParen));
+            try(expect_token(context, TokenKind_RParen));
 
             break;
        }
@@ -170,14 +248,14 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	    expression->kind = ExprKind_Ret;
 	    consume_token(context);
 
-	    expression->ret = Maybe(parse_expression(context));
+	    expression->ret = try(parse_expression(context));
 
 	    break;
 	}
 
 	case TokenKind_NumberLiteral: {
 	    expression->kind = ExprKind_NumberLit;
-	    expression->number_literal = Maybe(parse_number_literal(context));
+	    expression->number_literal = try(parse_number_literal(context));
 
 	    break;
 	}
@@ -204,22 +282,22 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    expression->kind = ExprKind_Let;
 
-	    Token* name_token = Maybe(expect_token(context, TokenKind_Symbol));
-	    expression->let = Maybe(malloc(sizeof(Let)));
+	    Token* name_token = try(expect_token(context, TokenKind_Symbol));
+	    expression->let = malloc(sizeof(Let));
 	    expression->let->name = name_token->span;
 
             Token* maybe_colon = current_token(context);
             if (maybe_colon->kind == TokenKind_Colon) {
                 consume_token(context);
 
-                expression->let->type = Maybe(parse_type(context));
+                expression->let->type = try(parse_type(context));
             } else {
                 expression->let->type = null;
             }
 
-	    Maybe(expect_token(context, TokenKind_Equals));
+	    try(expect_token(context, TokenKind_Equals));
 
-	    expression->let->value = Maybe(parse_expression(context));
+	    expression->let->value = try(parse_expression(context));
 
 	    break;
 	}
@@ -235,14 +313,14 @@ static Expr* parse_primary_expression(ParserContext* context) {
 
 	    expression->kind = ExprKind_FnCall;
 
-	    expression->fn_call = Maybe(malloc(sizeof(FnCall)));
+	    expression->fn_call = malloc(sizeof(FnCall));
 	    expression->fn_call->name = symbol_token->span;
 
-	    Maybe(expect_token(context, TokenKind_LParen));
+	    try(expect_token(context, TokenKind_LParen));
 
 	    expression->fn_call->arguments = dynarray_init();
 	    while (current_token(context)->kind != TokenKind_RParen) {
-		Expr* arg = Maybe(parse_expression(context));
+		Expr* arg = try(parse_expression(context));
 		dynarray_push(expression->fn_call->arguments, &arg);
 
 		if (current_token(context)->kind != TokenKind_Comma) {
@@ -252,14 +330,14 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		consume_token(context);
 	    }
 
-	    Maybe(expect_token(context, TokenKind_RParen));
+	    try(expect_token(context, TokenKind_RParen));
 
 	    break;
 	}
 
 	case TokenKind_LBrace: {
 	    expression->kind = ExprKind_Block;
-	    expression->block = Maybe(parse_block(context));
+	    expression->block = try(parse_block(context));
 
 	    break;
 	}
@@ -279,13 +357,13 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	case TokenKind_KeywordIf: {
 	    consume_token(context);
 	    expression->kind = ExprKind_If;
-	    expression->if_expr = Maybe(malloc(sizeof(If)));
-	    expression->if_expr->condition = Maybe(parse_expression(context));
+	    expression->if_expr = malloc(sizeof(If));
+	    expression->if_expr->condition = try(parse_expression(context));
 
 	    if (current_token(context)->kind != TokenKind_LBrace) {
 		sil_panic("Expected block after if");
 	    }
-	    expression->if_expr->then = Maybe(parse_expression(context));
+	    expression->if_expr->then = try(parse_expression(context));
 	   
 	    // else (if) branch
 	    if (current_token(context)->kind == TokenKind_KeywordElse) {
@@ -298,7 +376,7 @@ static Expr* parse_primary_expression(ParserContext* context) {
 		    sil_panic("Expected 'if' or '{' after an else");
 		}
 
-		expression->if_expr->otherwise = Maybe(parse_expression(context));
+		expression->if_expr->otherwise = try(parse_expression(context));
 	    } else {
 		expression->if_expr->otherwise = null;
 	    }
@@ -309,29 +387,29 @@ static Expr* parse_primary_expression(ParserContext* context) {
 	case TokenKind_KeywordMatch: {
 	    consume_token(context);
 	    expression->kind = ExprKind_Match;
-	    expression->match = Maybe(malloc(sizeof(Match)));
-	    expression->match->arms = Maybe(dynarray_init());
+	    expression->match = malloc(sizeof(Match));
+	    expression->match->arms = dynarray_init();
 
-	    expression->match->condition = Maybe(parse_expression(context));
+	    expression->match->condition = try(parse_expression(context));
 
-	    Maybe(expect_token(context, TokenKind_LBrace));
+	    try(expect_token(context, TokenKind_LBrace));
 	   
 	    while (current_token(context)->kind != TokenKind_RBrace) {
-		MatchArm* arm = Maybe(malloc(sizeof(MatchArm)));
-		arm->pattern = Maybe(parse_number_literal(context));
+		MatchArm* arm = malloc(sizeof(MatchArm));
+		arm->pattern = try(parse_number_literal(context));
 
-		Maybe(expect_token(context, TokenKind_FatArrow));
-		arm->then = Maybe(parse_expression(context));
+		try(expect_token(context, TokenKind_FatArrow));
+		arm->then = try(parse_expression(context));
 
 		dynarray_push(expression->match->arms, &arm);
 
 		if (current_token(context)->kind != TokenKind_RBrace) {
-		    Maybe(expect_token(context, TokenKind_Comma));
+		    try(expect_token(context, TokenKind_Comma));
 		}
 
 	    }
 
-	    Maybe(expect_token(context, TokenKind_RBrace));
+	    try(expect_token(context, TokenKind_RBrace));
 
 	    break;
 	}
@@ -345,23 +423,23 @@ static Expr* parse_primary_expression(ParserContext* context) {
                 return null;
             }
 
-            expression->loop = Maybe(malloc(sizeof(Loop)));
-            expression->loop->body = Maybe(parse_primary_expression(context));
+            expression->loop = malloc(sizeof(Loop));
+            expression->loop->body = try(parse_primary_expression(context));
 
             break;
         }
 
 	default: {
             module_add_error(context->module, current_token(context), "expected expression", "expression cannot start with %s", token_string(current_token(context)->kind));
-            return null;
+            return None;
 	}
     }
 
-    return expression;
+    return Some(expression);
 }
 
-static Expr* parse_expression_prec(ParserContext* context, int precedence) {
-    Expr* left_expression = Maybe(parse_primary_expression(context));
+static Maybe(Expr*) parse_expression_prec(ParserContext* context, int precedence) {
+    Expr* left_expression = try(parse_primary_expression(context));
 
     while (1) {
 	Token* operator_token = current_token(context);
@@ -374,11 +452,11 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 
 	consume_token(context);
 
-	Expr* right_expression = Maybe(parse_expression_prec(context, right));
+	Expr* right_expression = try(parse_expression_prec(context, right));
 
-	Expr* operator = Maybe(malloc(sizeof(Expr)));
+	Expr* operator = malloc(sizeof(Expr));
 	operator->kind = ExprKind_BinOp;
-	operator->binary_operator = Maybe(malloc(sizeof(BinOp)));
+	operator->binary_operator = malloc(sizeof(BinOp));
 
 	switch (operator_token->kind) {
             case TokenKind_KeywordAnd: operator->binary_operator->kind = BinOpKind_And; break;
@@ -401,51 +479,51 @@ static Expr* parse_expression_prec(ParserContext* context, int precedence) {
 	left_expression = operator;
     }
 
-    return left_expression;
+    return Some(left_expression);
 }
 
-static Expr* parse_expression(ParserContext* context) {
+static Maybe(Expr*) parse_expression(ParserContext* context) {
     return parse_expression_prec(context, 0);
 }
 
-static Stmt* parse_statement(ParserContext* context) {
-    Stmt* statement = Maybe(malloc(sizeof(Stmt)));
+static Maybe(Stmt*) parse_statement(ParserContext* context) {
+    Stmt* statement = malloc(sizeof(Stmt));
 
     switch (current_token(context)->kind) {
 	default: {
 	    statement->kind = StmtKind_Expr;
-	    statement->expression = Maybe(parse_expression(context));
+	    statement->expression = try(parse_expression(context));
 	   
 	    if (!parser_should_remove_statement_semicolon(statement->expression)) {
-		Maybe(expect_semicolon(context));
+		try(expect_semicolon(context));
 	    }
 
 	    break;
 	}
     }
-    return statement;
+    return Some(statement);
 }
 
-static FnSig* parse_fn_signature(ParserContext* context, String* name) {
-    FnSig* fn_sig = Maybe(malloc(sizeof(FnSig)));
+static Maybe(FnSig*) parse_fn_signature(ParserContext* context, String* name) {
+    FnSig* fn_sig = malloc(sizeof(FnSig));
 
-    Maybe(expect_token(context, TokenKind_KeywordFn));
+    try(expect_token(context, TokenKind_KeywordFn));
 
-    Token* name_token = Maybe(expect_token(context, TokenKind_Symbol));
+    Token* name_token = try(expect_token(context, TokenKind_Symbol));
     *name = name_token->span;
 
-    Maybe(expect_token(context, TokenKind_LParen));
+    try(expect_token(context, TokenKind_LParen));
 
-    fn_sig->parameters = Maybe(dynarray_init());
+    fn_sig->parameters = dynarray_init();
     while (current_token(context)->kind != TokenKind_RParen) {
-	FnParam* parameter = Maybe(malloc(sizeof(FnParam)));
+	FnParam* parameter = malloc(sizeof(FnParam));
 
-	Token* name_token = Maybe(expect_token(context, TokenKind_Symbol));
+	Token* name_token = try(expect_token(context, TokenKind_Symbol));
 	parameter->name = name_token->span;
 
-	Maybe(expect_token(context, TokenKind_Colon));
+	try(expect_token(context, TokenKind_Colon));
 
-	parameter->type = Maybe(parse_type(context));
+	parameter->type = try(parse_type(context));
 
 	dynarray_push(fn_sig->parameters, &parameter);
 
@@ -456,24 +534,24 @@ static FnSig* parse_fn_signature(ParserContext* context, String* name) {
 	consume_token(context);
     }
 
-    Maybe(expect_token(context, TokenKind_RParen));
+    try(expect_token(context, TokenKind_RParen));
 
     if (current_token(context)->kind == TokenKind_Arrow) {
 	consume_token(context);
-	fn_sig->return_type = Maybe(parse_type(context));
+	fn_sig->return_type = try(parse_type(context));
     } else {
-	Type* void_type = Maybe(malloc(sizeof(Type)));
+	Type* void_type = malloc(sizeof(Type));
 	void_type->kind = TypeKind_Void;
 	fn_sig->return_type = void_type;
     }
 
-    return fn_sig;
+    return Some(fn_sig);
 }
 
-static FnDef* parse_fn_definition(ParserContext* context, String* name) {
-    FnDef* fn_decl = Maybe(malloc(sizeof(FnDef)));
+static Maybe(FnDef*) parse_fn_definition(ParserContext* context, String* name) {
+    FnDef* fn_decl = malloc(sizeof(FnDef));
 
-    fn_decl->signature = Maybe(parse_fn_signature(context, name));
+    fn_decl->signature = try(parse_fn_signature(context, name));
 
     // TODO: Make block expression
     if (current_token(context)->kind != TokenKind_LBrace) {
@@ -481,29 +559,29 @@ static FnDef* parse_fn_definition(ParserContext* context, String* name) {
         return null;
     }
 
-    fn_decl->body = Maybe(parse_primary_expression(context));
+    fn_decl->body = try(parse_primary_expression(context));
 
-    return fn_decl;
+    return Some(fn_decl);
 }
 
-static Constant* parse_constant(ParserContext* context, String* name) {
-    Constant* constant = Maybe(malloc(sizeof(Constant)));
+static Maybe(Constant*) parse_constant(ParserContext* context, String* name) {
+    Constant* constant = malloc(sizeof(Constant));
 
-    Token* ident = Maybe(expect_token(context, TokenKind_Symbol));
+    Token* ident = try(expect_token(context, TokenKind_Symbol));
     *name = ident->span;
 
-    Maybe(expect_token(context, TokenKind_Colon));
+    try(expect_token(context, TokenKind_Colon));
 
-    constant->type = Maybe(parse_type(context));
+    constant->type = try(parse_type(context));
 
-    Maybe(expect_token(context, TokenKind_Equals));
+    try(expect_token(context, TokenKind_Equals));
 
-    constant->value = Maybe(parse_expression(context));
+    constant->value = try(parse_expression(context));
 
-    return constant;
+    return Some(constant);
 }
 
-static Item* parse_item(ParserContext* context) {
+static Maybe(Item*) parse_item(ParserContext* context) {
     Item* item = malloc(sizeof(Item));
 
     if (current_token(context)->kind == TokenKind_KeywordPub) {
@@ -516,7 +594,7 @@ static Item* parse_item(ParserContext* context) {
     switch (current_token(context)->kind) {
 	case TokenKind_KeywordFn: {
 	    item->kind = ItemKind_FnDef;
-	    item->fn_definition = Maybe(parse_fn_definition(context, &item->name));
+	    item->fn_definition = try(parse_fn_definition(context, &item->name));
 	    break;
 	}
 
@@ -524,8 +602,8 @@ static Item* parse_item(ParserContext* context) {
 	    item->kind = ItemKind_ExternFn;
 	    consume_token(context);
 	    item->extern_fn = malloc(sizeof(ExternFn));
-	    item->extern_fn->signature = parse_fn_signature(context, &item->name);
-	    Maybe(expect_token(context, TokenKind_Semicolon));
+	    item->extern_fn->signature = try(parse_fn_signature(context, &item->name));
+	    try(expect_token(context, TokenKind_Semicolon));
 	    break;
 	}
 
@@ -533,9 +611,9 @@ static Item* parse_item(ParserContext* context) {
 	    item->kind = ItemKind_Const;
             consume_token(context);
 
-	    item->constant = Maybe(parse_constant(context, &item->name));
+	    item->constant = try(parse_constant(context, &item->name));
 
-            Maybe(expect_semicolon(context));
+            try(expect_semicolon(context));
 
 	    break;
 	}
@@ -548,24 +626,25 @@ static Item* parse_item(ParserContext* context) {
                 "expected item, found %s",
                 token_string(current_token(context)->kind)
             );
+            return None;
 	}
     }
 
-    return item;
+    return Some(item);
 }
 
-static AstRoot* parse_root(ParserContext* context) {
-    AstRoot* root = Maybe(malloc(sizeof(AstRoot)));
+static Maybe(AstRoot*) parse_root(ParserContext* context) {
+    AstRoot* root = malloc(sizeof(AstRoot));
 
     root->items = dynarray_init();
 
     while (current_token(context)->kind != TokenKind_Eof) {
-	Item* item = Maybe(parse_item(context));
+	Item* item = try(parse_item(context));
 
 	dynarray_push(root->items, &item);
     }
 
-    return root;
+    return Some(root);
 }
 
 void parser_parse(Module* module) {
@@ -573,7 +652,10 @@ void parser_parse(Module* module) {
     context.module = module;
     context.token_index = 0;
 
-    module->ast = parse_root(&context);
+    Maybe(AstRoot*) root = parse_root(&context);
+    if (root != None) {
+        module->ast = unwrap(root);
+    }
 }
 
 bool parser_should_remove_statement_semicolon(Expr* expression) {
@@ -581,6 +663,7 @@ bool parser_should_remove_statement_semicolon(Expr* expression) {
 	expression->kind == ExprKind_If ||
 	expression->kind == ExprKind_Match ||
 	expression->kind == ExprKind_Block ||
-        expression->kind == ExprKind_Loop
+        expression->kind == ExprKind_Loop ||
+        expression->kind == ExprKind_Asm
     );
 }

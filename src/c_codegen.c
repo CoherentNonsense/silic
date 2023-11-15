@@ -17,7 +17,7 @@ typedef struct CodegenContext {
 } CodegenContext;
 
 static void write(CodegenContext* context, String span) {
-    fwrite(span.data, span.len, 1, context->out_file);
+    fwrite(span.ptr, span.len, 1, context->out_file);
 }
 
 // using a macro so we can use sizeof on the literal
@@ -52,6 +52,7 @@ static void generate_type(CodegenContext* context, Type* type) {
 
 	case TypeKind_Ptr: {
 	    generate_type(context, type->ptr.to);
+            if (not type->ptr.is_mut) { write_literal(context, " const"); }
 	    write_literal(context, "*");
 	    break;
 	}
@@ -98,6 +99,58 @@ static void generate_binop(CodegenContext* context, BinOp* binop) {
     write_literal(context, ", ");
     generate_expression(context, binop->right);
     write_literal(context, ")");
+}
+
+static void generate_asm(CodegenContext* context, Asm* asm) {
+    // HACK: this wholbe backend is really all a hack tbh
+    static char tmp_var[] = "expr_val0";
+    for (usize i = 0; i < dynarray_len(asm->outputs); i += 1) {
+        write_literal(context, "ssize_t ");
+        write_literal(context, tmp_var);
+        write_literal(context, ";\n");
+    }
+
+    write_indent(context);
+    write_literal(context, "__asm__ volatile (");
+    for (usize i = 0; i < dynarray_len(asm->source); i += 1) {
+        write(context, asm->source[i].span);
+    }
+
+    write_literal(context, ":");
+
+    for (usize i = 0; i < dynarray_len(asm->outputs); i += 1) {
+        write_literal(context, "\"=");
+        write(context, asm->outputs[i]);
+        write_literal(context, "\"(");
+        write_literal(context, tmp_var);
+        write_literal(context, "):");
+    }
+
+    for (usize i = 0; i < dynarray_len(asm->inputs); i += 1) {
+        if (i > 0) {
+            write_literal(context, ",");
+        }
+        write_literal(context, "\"");
+        write(context, asm->inputs[i].reg);
+        write_literal(context, "\"(");
+        generate_expression(context, asm->inputs[i].val);
+        write_literal(context, ")");
+    }
+
+    write_literal(context, ":");
+
+    for (usize i = 0; i < dynarray_len(asm->clobbers); i += 1) {
+        if (i > 0) {
+            write_literal(context, ",");
+        }
+        write_literal(context, "\"");
+        write(context, asm->clobbers[i]);
+        write_literal(context, "\"");
+    }
+
+    write_literal(context, ");");
+
+    tmp_var[8] += 1;
 }
 
 static void generate_expression(CodegenContext* context, Expr* expression) {
@@ -219,6 +272,11 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
         case ExprKind_Break: { write_literal(context, "break"); break; }
         case ExprKind_Continue: { write_literal(context, "continue"); break; }
 
+        case ExprKind_Asm: {
+            generate_asm(context, expression->asm);
+            break;
+        }
+
         default: sil_panic("Codegen Error: Unhandled expression %d", expression->kind);
     }
 }
@@ -337,7 +395,7 @@ void c_codegen_generate(Module* module, bool build) {
     fclose(context.out_file);
 
     if (build) {
-	system("gcc -O1 build/ir.c -o app");
+	system("gcc -nostartfiles -O2 build/ir.c -o app");
     }
 }
 

@@ -1,0 +1,24 @@
+fn syscall1(id: isize, arg1: isize) -> isize {
+    asm volatile (
+        a = id,
+        D = arg1,
+        rcx, r11
+    ) -> a { "syscall" }
+}
+
+fn syscall3(id: isize, arg1: isize, arg2: isize, arg3: isize) -> isize {
+    asm volatile (
+        a = id,
+        D = arg1,
+        S = arg2,
+        d = arg3,
+        rcx, r11
+    ) -> a { "syscall" }
+}
+
+pub fn _start() -> ! {
+    let msg = "Hello, World!";
+    syscall3(1, 1, msg.ptr, msg.len);
+
+    syscall(60, 0);
+}

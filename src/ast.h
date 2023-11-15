@@ -91,6 +91,7 @@ typedef enum ExprKind {
     ExprKind_Loop,
     ExprKind_Break,
     ExprKind_Continue,
+    ExprKind_Asm,
 } ExprKind;
 
 typedef struct StringLit {
@@ -178,6 +179,18 @@ typedef struct FnCall {
     DynArray(Expr*) arguments;
 } FnCall;
 
+typedef struct AsmInput {
+    String reg;
+    Expr* val;
+} AsmInput;
+
+typedef struct Asm {
+    DynArray(AsmInput) inputs;
+    DynArray(String) clobbers;
+    DynArray(String) outputs;
+    DynArray(StringLit) source;
+} Asm;
+
 typedef struct Expr {
     ExprKind kind;
     union {
@@ -193,6 +206,7 @@ typedef struct Expr {
 	FnCall* fn_call;
         bool boolean;
         Loop* loop;
+        Asm* asm;
     };
 } Expr;
 

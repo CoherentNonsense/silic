@@ -14,6 +14,7 @@ Module* compiler_compile_module(String path, String source, bool build, bool deb
     Module* module = malloc(sizeof(Module));
     module_init(module, path, source);
 
+    
 
     // ------ //
     // Lexing //

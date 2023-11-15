@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <iso646.h>
 
-static void analyze_statement(Module*, Stmt*);
+static bool analyze_statement(Module*, Stmt*);
 static TypeEntry* analyze_expression(Module*, Expr*);
 
 static void setup_primitive_types(Module* module) {
@@ -23,6 +23,11 @@ static void setup_primitive_types(Module* module) {
     // bool
     module->primitives.entry_bool = typetable_new_type(&module->type_table, TypeEntryKind_Bool, 8);
     map_insert(module->types, str_from_lit("bool"), &module->primitives.entry_bool);
+
+    // usize
+    module->primitives.entry_usize = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
+    module->primitives.entry_usize->integral.is_signed = false;
+    map_insert(module->types, str_from_lit("usize"), &module->primitives.entry_usize);
 
     // unsigned int
     module->primitives.entry_u8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
@@ -236,11 +241,14 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
         case ExprKind_Ret: {
             return analyze_expression(module, expression->ret);
         }
+        case ExprKind_Asm: {
+            return module->primitives.entry_i64;
+        }
 	case ExprKind_NumberLit: {
             return module->primitives.entry_i32;
 	}
         case ExprKind_StringLit: {
-            return typetable_new_ptr(&module->type_table, module->primitives.entry_c_char, true);
+            return typetable_new_ptr(&module->type_table, module->primitives.entry_c_char, false);
         }
         case ExprKind_BoolLit: {
             return module->primitives.entry_bool;
@@ -249,14 +257,16 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
     }
 }
 
-static void analyze_statement(Module* module, Stmt* statement) {
+static bool analyze_statement(Module* module, Stmt* statement) {
     switch (statement->kind) {
         case StmtKind_Expr: analyze_expression(module, statement->expression); break;
         default: sil_panic("Analyzer Error: Unhandled Statement Kind");
     }
+
+    return true;
 }
 
-static void analyze_fn_definition(Module* module, FnDef* fn_definition) {
+static bool analyze_fn_definition(Module* module, FnDef* fn_definition) {
     symtable_enter_scope(&module->symbol_table);
 
     // add paramaters to symtable
@@ -270,9 +280,11 @@ static void analyze_fn_definition(Module* module, FnDef* fn_definition) {
     analyze_expression(module, block);
 
     symtable_exit_scope(&module->symbol_table);
+
+    return true;
 }
 
-static void analyze_ast(Module* module, AstRoot* root) {
+static bool analyze_ast(Module* module, AstRoot* root) {
     for (size_t i = 0; i < dynarray_len(root->items); i += 1) {
 	// add item to top level
 	Item* item = root->items[i];
@@ -292,6 +304,8 @@ static void analyze_ast(Module* module, AstRoot* root) {
             default: break;
         }
     }
+
+    return true;
 }
 
 

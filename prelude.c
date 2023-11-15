@@ -3,10 +3,12 @@
 // ------------- //
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 typedef uint8_t u8;
 typedef int32_t i32;
 typedef char c_char;
+typedef size_t usize;
 
 // instructions
 static void wri32(i32* a, i32 b) {

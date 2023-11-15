@@ -66,11 +66,11 @@ void module_display_errors(Module* module) {
         fprintf(stderr, FADED "    ╭─[" RESET "%.*s:%d:%d" FADED "]───\n", str_format(module->path), position.line, position.column);
         fprintf(stderr, "%.*s%.*d │ " RESET, 3 - line_num_width, "  ", line_num_width, error->token->position.line);
         // print source
-        char* start = (char*)error->token->span.data - (position.column - 1);
+        char* start = (char*)error->token->span.ptr - (position.column - 1);
         while (*start != '\n' && *start != 0) {
-            if (start == error->token->span.data) { fprintf(stderr, ERROR_RED); }
+            if (start == error->token->span.ptr) { fprintf(stderr, ERROR_RED); }
             putc(*start, stderr);
-            if (start == error->token->span.data + error->token->span.len - 1) { fprintf(stderr, RESET); }
+            if (start == error->token->span.ptr+ error->token->span.len - 1) { fprintf(stderr, RESET); }
             start += 1;
         }
         fprintf(stderr, FADED "\n    │ ");

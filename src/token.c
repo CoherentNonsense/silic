@@ -8,7 +8,7 @@ int token_compare_literal(Token* token, char* literal) {
     size_t const literal_length = strlen(literal);
     size_t const max_length = token->span.len > literal_length ?
 	token->span.len : literal_length;
-    return !strncmp(token->span.data, literal, max_length);
+    return !strncmp(token->span.ptr, literal, max_length);
 }
 
 char* token_string(TokenKind kind) {
@@ -42,6 +42,8 @@ char* token_string(TokenKind kind) {
         case TokenKind_Bang: return "'!'";
         case TokenKind_Dot: return "'.'";
 	case TokenKind_Percent: return "'%'";
+        case TokenKind_KeywordAsm: return "keyword 'asm'";
+        case TokenKind_KeywordVolatile: return "keyword 'volatile'";
         case TokenKind_KeywordLet: return "keyword 'let'";
 	case TokenKind_KeywordConst: return "keyword 'const'";
         case TokenKind_KeywordFn: return "keyword 'fn'";
@@ -60,6 +62,7 @@ char* token_string(TokenKind kind) {
         case TokenKind_KeywordAnd: return "keyword 'and'";
         case TokenKind_KeywordOr: return "keyword 'or'";
         case TokenKind_KeywordNot: return "keyword 'not'";
+        case TokenKind_KeywordMut: return "keyword 'mut'";
     }
 
     sil_panic("unhandled token");
