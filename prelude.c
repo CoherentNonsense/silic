@@ -2,7 +2,6 @@
 // C(IR) PRELUDE //
 // ------------- //
 #include <stdint.h>
-#include <stdbool.h>
 #include <sys/types.h>
 
 typedef uint8_t u8;
@@ -11,6 +10,7 @@ typedef int64_t i64;
 typedef char c_char;
 typedef size_t usize;
 typedef ssize_t isize;
+typedef _Bool bool;
 
 // instructions
 static void wri32(i32* a, i32 b) {

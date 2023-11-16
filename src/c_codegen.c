@@ -27,18 +27,20 @@ void write_indent(CodegenContext* context) {
 static void generate_statement(CodegenContext* context, Stmt* statement);
 static void generate_expression(CodegenContext* context, Expr* expression);
 
-static void generate_type(CodegenContext* context, TypeEntry* type) {
-    switch (type->kind) {
+static void generate_type(CodegenContext* context, type_id type) {
+    TypeEntry* type_entry = &context->module->type_table.types[type];
+    switch (type_entry->kind) {
+        case TypeEntryKind_Invalid: { sil_panic("generating invalid type"); }
         case TypeEntryKind_Void: { strbuf_print_lit(&context->strbuf, "void"); break; }
         case TypeEntryKind_Never: { strbuf_print_lit(&context->strbuf, "void"); break; }
         case TypeEntryKind_Ptr: {
-            generate_type(context, type->ptr.to);
-            strbuf_printf(&context->strbuf, "%s*", type->ptr.is_mut ? "" : " const");
+            generate_type(context, type_entry->ptr.to);
+            strbuf_printf(&context->strbuf, "%s*", type_entry->ptr.is_mut ? "" : " const");
             break;
         }
         case TypeEntryKind_Bool: { strbuf_print_lit(&context->strbuf, "bool"); break; }
         case TypeEntryKind_Int: {
-            strbuf_printf(&context->strbuf, "%c%zu", type->integral.is_signed ? 'i' : 'u', type->bits);
+            strbuf_printf(&context->strbuf, "%c%zu", type_entry->integral.is_signed ? 'i' : 'u', type_entry->bits);
         }
     }
 }

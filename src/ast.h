@@ -19,7 +19,7 @@ typedef struct Expr Expr;
 // HACK: ast nodes keep a reference to the scope they're a part of and type info
 //       so they can be references later. don't...
 typedef struct SymEntry {
-    TypeEntry* type;
+    type_id type;
 } SymEntry;
 
 typedef struct Scope {
@@ -220,7 +220,7 @@ typedef struct Expr {
     };
 
     struct {
-        TypeEntry* type;
+        type_id type;
     } codegen;
 } Expr;
 

@@ -29,29 +29,29 @@ typedef struct Module {
     AstRoot* ast;
 
     Map(Item*) items;
-    Map(TypeEntry*) types;
+    Map(type_id) types;
     SymTable symbol_table;
     TypeTable type_table;
 
     struct {
-        TypeEntry* entry_void;
-        TypeEntry* entry_never;
+        type_id entry_void;
+        type_id entry_never;
 
-        TypeEntry* entry_c_char;
+        type_id entry_c_char;
 
-        TypeEntry* entry_bool;
+        type_id entry_bool;
 
-        TypeEntry* entry_usize;
+        type_id entry_usize;
         
-        TypeEntry* entry_u8;
-        TypeEntry* entry_u16;
-        TypeEntry* entry_u32;
-        TypeEntry* entry_u64;
+        type_id entry_u8;
+        type_id entry_u16;
+        type_id entry_u32;
+        type_id entry_u64;
 
-        TypeEntry* entry_i8;
-        TypeEntry* entry_i16;
-        TypeEntry* entry_i32;
-        TypeEntry* entry_i64;
+        type_id entry_i8;
+        type_id entry_i16;
+        type_id entry_i32;
+        type_id entry_i64;
     } primitives;
 
     bool has_errors;

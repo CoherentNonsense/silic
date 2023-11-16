@@ -8,7 +8,7 @@
 #include <iso646.h>
 
 static bool analyze_statement(Module*, Stmt*);
-static TypeEntry* analyze_expression(Module*, Expr*);
+static type_id analyze_expression(Module*, Expr*);
 
 static void setup_primitive_types(Module* module) {
 
@@ -20,8 +20,7 @@ static void setup_primitive_types(Module* module) {
     module->primitives.entry_never = typetable_new_type(&module->type_table, TypeEntryKind_Never, 0);
 
     // char
-    module->primitives.entry_c_char = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
-    module->primitives.entry_c_char->integral.is_signed = false;
+    module->primitives.entry_c_char = typetable_new_int(&module->type_table, 8, false);
     map_insert(module->types, str_from_lit("c_char"), &module->primitives.entry_c_char);
 
     // bool
@@ -29,25 +28,18 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("bool"), &module->primitives.entry_bool);
 
     // usize
-    module->primitives.entry_usize = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
-    module->primitives.entry_usize->integral.is_signed = false;
+    module->primitives.entry_usize = typetable_new_int(&module->type_table, 64, false);
     map_insert(module->types, str_from_lit("usize"), &module->primitives.entry_usize);
 
     // isize
-    module->primitives.entry_usize = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
-    module->primitives.entry_usize->integral.is_signed = true;
+    module->primitives.entry_usize = typetable_new_int(&module->type_table, 64, true);
     map_insert(module->types, str_from_lit("isize"), &module->primitives.entry_usize);
 
     // unsigned int
-    module->primitives.entry_u8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
-    module->primitives.entry_u16 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 16);
-    module->primitives.entry_u32 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 32);
-    module->primitives.entry_u64 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
-
-    module->primitives.entry_u8->integral.is_signed = false;
-    module->primitives.entry_u16->integral.is_signed = false;
-    module->primitives.entry_u32->integral.is_signed = false;
-    module->primitives.entry_u64->integral.is_signed = false;
+    module->primitives.entry_u8 = typetable_new_int(&module->type_table, 8, false);
+    module->primitives.entry_u16 = typetable_new_int(&module->type_table, 16, false);
+    module->primitives.entry_u32 = typetable_new_int(&module->type_table, 32, false);
+    module->primitives.entry_u64 = typetable_new_int(&module->type_table, 64, false);
 
     map_insert(module->types, str_from_lit("u8"), &module->primitives.entry_u8);
     map_insert(module->types, str_from_lit("u16"), &module->primitives.entry_u16);
@@ -55,15 +47,10 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("u64"), &module->primitives.entry_u64);
 
     // signed int
-    module->primitives.entry_i8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
-    module->primitives.entry_i16 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 16);
-    module->primitives.entry_i32 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 32);
-    module->primitives.entry_i64 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
-
-    module->primitives.entry_i8->integral.is_signed = true;
-    module->primitives.entry_i16->integral.is_signed = true;
-    module->primitives.entry_i32->integral.is_signed = true;
-    module->primitives.entry_i64->integral.is_signed = true;
+    module->primitives.entry_i8 = typetable_new_int(&module->type_table, 8, true);
+    module->primitives.entry_i16 = typetable_new_int(&module->type_table, 16, true);
+    module->primitives.entry_i32 = typetable_new_int(&module->type_table, 32, true);
+    module->primitives.entry_i64 = typetable_new_int(&module->type_table, 64, true);
 
     map_insert(module->types, str_from_lit("i8"), &module->primitives.entry_i8);
     map_insert(module->types, str_from_lit("i16"), &module->primitives.entry_i16);
@@ -71,14 +58,14 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("i64"), &module->primitives.entry_i64);
 }
 
-static TypeEntry* resolve_type(Module* module, Type* type) {
-    if (type == null) { return null; }
+static type_id resolve_type(Module* module, Type* type) {
+    if (type == null) { return 0; }
     switch (type->kind) {
         case TypeKind_Void: return module->primitives.entry_void;
         case TypeKind_Never: return module->primitives.entry_never;
 
         case TypeKind_Symbol: {
-            Maybe(TypeEntry*) entry = map_get(module->types, type->symbol);
+            Maybe(type_id) entry = map_get(module->types, type->symbol);
             if (entry == None) {
                 sil_panic("Codegen Error: unhandled type");
             }
@@ -86,24 +73,22 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
         }
 
         case TypeKind_Ptr: {
-            TypeEntry* child = resolve_type(module, type->ptr.to);
-            TypeEntry* existing = type->ptr.is_mut ? child->parent_ptr_mut : child->parent_ptr;
-            if (existing != null) {
+            type_id child = resolve_type(module, type->ptr.to);
+            TypeEntry* child_entry = &module->type_table.types[child];
+            type_id existing = type->ptr.is_mut ? child_entry->parent_ptr_mut : child_entry->parent_ptr;
+            if (existing != 0) {
                 return existing;
             }
 
-            return typetable_new_ptr(&module->type_table, child, type->ptr.is_mut);
+            type_id new = typetable_new_ptr(&module->type_table, child, type->ptr.is_mut);
+            return new;
         }
 
         default: sil_panic("cannot resolve type %d", type->kind);
     }
 }
 
-static bool type_eq(TypeEntry* a, TypeEntry* b) {
-    return a == b;
-}
-
-static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
+static type_id analyze_bin_op(Module* module, BinOp* bin_op) {
     switch (bin_op->kind) {
         case BinOpKind_Assign: return module->primitives.entry_void;
 
@@ -111,10 +96,10 @@ static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
         case BinOpKind_Sub:
         case BinOpKind_Mul:
         case BinOpKind_Div: {
-	    TypeEntry* left_type = analyze_expression(module, bin_op->left);
-	    TypeEntry* right_type = analyze_expression(module, bin_op->right);
+	    type_id left_type = analyze_expression(module, bin_op->left);
+	    type_id right_type = analyze_expression(module, bin_op->right);
 
-            if (not type_eq(left_type, right_type)) {
+            if (left_type != right_type) {
                 sil_panic("binop: incompatable types");
             }
 
@@ -123,10 +108,13 @@ static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
 
         case BinOpKind_And:
         case BinOpKind_Or: {
-            TypeEntry* left_type = analyze_expression(module, bin_op->left);
-            TypeEntry* right_type = analyze_expression(module, bin_op->right);
+            type_id left_type = analyze_expression(module, bin_op->left);
+            type_id right_type = analyze_expression(module, bin_op->right);
+
+            TypeEntry* left_type_entry = &module->type_table.types[left_type];
+            TypeEntry* right_type_entry = &module->type_table.types[right_type];
     
-            if (left_type->kind != TypeEntryKind_Bool or right_type->kind != TypeEntryKind_Bool) {
+            if (left_type_entry->kind != TypeEntryKind_Bool or right_type_entry->kind != TypeEntryKind_Bool) {
                 sil_panic("and/or can only compare boolean expressions");
             }
 
@@ -137,10 +125,10 @@ static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
         case BinOpKind_CmpLt:
         case BinOpKind_CmpEq:
         case BinOpKind_CmpNotEq: {
-	    TypeEntry* left_type = analyze_expression(module, bin_op->left);
-	    TypeEntry* right_type = analyze_expression(module, bin_op->right);
+	    type_id left_type = analyze_expression(module, bin_op->left);
+	    type_id right_type = analyze_expression(module, bin_op->right);
 
-            if (not type_eq(left_type, right_type)) {
+            if (left_type != right_type) {
                 sil_panic("binop: incomparable types");
             }
 
@@ -150,7 +138,7 @@ static TypeEntry* analyze_bin_op(Module* module, BinOp* bin_op) {
     }
 }
 
-static TypeEntry* analyze_expression(Module* module, Expr* expression) {
+static type_id analyze_expression(Module* module, Expr* expression) {
     switch (expression->kind) {
         case ExprKind_Block: {
 	    symtable_enter_scope(&module->symbol_table);
@@ -174,16 +162,16 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 		sil_panic("Redeclaration of variable %.*s", str_format(let->name));
 	    }
 
-            TypeEntry* explicit_type = resolve_type(module, let->type);
-	    TypeEntry* implicit_type = analyze_expression(module, let->value);
+            type_id explicit_type = resolve_type(module, let->type);
+	    type_id implicit_type = analyze_expression(module, let->value);
 
             expression->codegen.type = implicit_type;
 
-	    if (explicit_type != null and not type_eq(explicit_type, implicit_type)) {
+	    if (explicit_type != 0 and explicit_type != implicit_type) {
 		sil_panic(
-                    "Sem Analysis Error: Implicit type conversion not allowed %d %d",
-                    explicit_type->kind,
-                    implicit_type->kind
+                    "Sem Analysis Error: Implicit type conversion not allowed %zu %zu",
+                    explicit_type,
+                    implicit_type
                 );
 	    }
 
@@ -215,12 +203,12 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 
             // analyze arguments
 	    for (size_t i = 0; i < dynarray_len(fn_call->arguments); i += 1) {
-		TypeEntry* arg_type = analyze_expression(module, fn_call->arguments[i]);
+	        type_id arg_type = analyze_expression(module, fn_call->arguments[i]);
 
                 FnParam* param = fn_definition->signature->parameters[i];
-                TypeEntry* param_type = resolve_type(module, param->type);
+                type_id param_type = resolve_type(module, param->type);
 
-                if (not type_eq(arg_type, param_type)) {
+                if (arg_type != param_type) {
                         sil_panic("function call with invalid arguments");
                 }
 	    }
@@ -230,8 +218,9 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
         case ExprKind_If: {
             If* if_expr = expression->if_expr;
 
-            TypeEntry* condition_type = analyze_expression(module, if_expr->condition);
-            if (condition_type->kind != TypeEntryKind_Bool) {
+            type_id condition_type = analyze_expression(module, if_expr->condition);
+            TypeEntry* condition_type_entry = &module->type_table.types[condition_type];
+            if (condition_type_entry->kind != TypeEntryKind_Bool) {
                 sil_panic("if condition must be a bool");
             }
 
@@ -260,6 +249,8 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
             return module->primitives.entry_i32;
 	}
         case ExprKind_StringLit: {
+            TypeEntry* char_entry = &module->type_table.types[module->primitives.entry_c_char];
+            if (char_entry->parent_ptr != 0) { return char_entry->parent_ptr; }
             return typetable_new_ptr(&module->type_table, module->primitives.entry_c_char, false);
         }
         case ExprKind_BoolLit: {
@@ -287,7 +278,7 @@ static bool analyze_fn_definition(Module* module, FnDef* fn_definition) {
     // add paramaters to symtable
     for (size_t i = 0; i < dynarray_len(fn_definition->signature->parameters); i += 1) {
         FnParam* param = fn_definition->signature->parameters[i];
-        TypeEntry* param_type = resolve_type(module, param->type);
+        type_id param_type = resolve_type(module, param->type);
         SymEntry entry = (SymEntry){ param_type };
         symtable_insert(&module->symbol_table, param->name, &entry);
     }

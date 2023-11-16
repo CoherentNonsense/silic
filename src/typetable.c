@@ -2,35 +2,51 @@
 
 void typetable_init(TypeTable* table) {
     table->types = dynarray_init();
+    // type_id = 0 is invalid
+    TypeEntry* entry = dynarray_add(table->types);
+    entry->kind = TypeEntryKind_Invalid;
 }
 
 void typetable_deinit(TypeTable* table) {
     dynarray_deinit(table->types);
 }
 
-TypeEntry* typetable_new_type(TypeTable* table, TypeEntryKind kind, size_t bits) {
+type_id typetable_new_type(TypeTable* table, TypeEntryKind kind, size_t bits) {
     TypeEntry* entry = dynarray_add(table->types);
-    entry->parent_ptr = null;
-    entry->parent_ptr_mut = null;
+    entry->parent_ptr = 0;
+    entry->parent_ptr_mut = 0;
     entry->kind = kind;
     entry->bits = bits;
 
-    return entry;
+    return dynarray_len(table->types) - 1;
 }
 
-TypeEntry* typetable_new_ptr(TypeTable* table, TypeEntry* to, bool is_mut) {
-    TypeEntry* entry = dynarray_add(table->types);
+type_id typetable_new_ptr(TypeTable* table, type_id to, bool is_mut) {
+    type_id new = typetable_new_type(table, TypeEntryKind_Ptr, 64);
 
+    TypeEntry* new_entry = &table->types[new];
+    new_entry->ptr.to = to;
+    new_entry->ptr.is_mut = is_mut;
+
+    TypeEntry* to_entry = &table->types[to];
     if (is_mut) {
-        to->parent_ptr_mut = entry;
+        to_entry->parent_ptr_mut = new;
     } else {
-        to->parent_ptr = entry;
+        to_entry->parent_ptr = new;
     }
 
-    entry->kind = TypeEntryKind_Ptr;
-    entry->ptr.to = to;
-    entry->ptr.is_mut = is_mut;
-    entry->bits = 8 * 8; // HACK: all ptrs are 8 bytes
+    return new;
+}
 
-    return entry;
+type_id typetable_new_int(TypeTable* table, usize bits, bool is_signed) {
+    type_id new = typetable_new_type(table, TypeEntryKind_Int, bits);
+
+    TypeEntry* new_entry = &table->types[new];
+    new_entry->integral.is_signed = is_signed;
+
+    return new;
+}
+
+TypeEntry typetable_get(TypeTable* table, type_id id) {
+    return table->types[id];
 }
