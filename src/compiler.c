@@ -6,6 +6,7 @@
 #include "analyzer.h"
 #include "c_codegen.h"
 #include "util.h"
+#include "os.h"
 #include <chnlib/logger.h>
 #include <stdio.h>
 
@@ -68,7 +69,32 @@ Module* compiler_compile_module(String path, String source, bool build, bool deb
     if (debug_info) {
         printf(BOLDWHITE "Generating IR\n" RESET);
     }
-    c_codegen_generate(module, build);
+
+    String ir = c_codegen_generate(module);
+
+    char* prelude_text;
+    int prelude_length;
+    bool read_success = read_file("prelude.c", &prelude_text, &prelude_length);
+    if (not read_success) {
+        printf("Failed to load 'prelude.c'");
+        return null;
+    }
+
+    FILE* out_file = fopen("build/ir.c", "wb");
+    if (out_file == null) {
+	    printf("Could not create ir\n");
+	    return null;
+    }
+
+    fwrite(prelude_text, prelude_length, 1, out_file);
+    fwrite(ir.ptr, ir.len, 1, out_file);
+
+    fclose(out_file);
+
+    if (build) {
+	system("gcc -nostartfiles -O2 build/ir.c -o app");
+    }
+
     if (debug_info) {
         printf(BOLDWHITE "Generated IR.\n" RESET);
     }

@@ -16,6 +16,9 @@ static void setup_primitive_types(Module* module) {
     module->primitives.entry_void = typetable_new_type(&module->type_table, TypeEntryKind_Void, 0);
     map_insert(module->types, str_from_lit("void"), &module->primitives.entry_void);
 
+    // never
+    module->primitives.entry_never = typetable_new_type(&module->type_table, TypeEntryKind_Never, 0);
+
     // char
     module->primitives.entry_c_char = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
     module->primitives.entry_c_char->integral.is_signed = true;
@@ -72,6 +75,7 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
     if (type == null) { return null; }
     switch (type->kind) {
         case TypeKind_Void: return module->primitives.entry_void;
+        case TypeKind_Never: return module->primitives.entry_never;
 
         case TypeKind_Symbol: {
             Maybe(TypeEntry*) entry = map_get(module->types, type->symbol);
@@ -172,6 +176,8 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
 
             TypeEntry* explicit_type = resolve_type(module, let->type);
 	    TypeEntry* implicit_type = analyze_expression(module, let->value);
+
+            expression->codegen.type = implicit_type;
 
 	    if (explicit_type != null and not type_eq(explicit_type, implicit_type)) {
 		sil_panic(

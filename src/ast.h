@@ -218,6 +218,10 @@ typedef struct Expr {
         Asm* asm;
         Cast* cast;
     };
+
+    struct {
+        TypeEntry* type;
+    } codegen;
 } Expr;
 
 

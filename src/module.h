@@ -35,6 +35,7 @@ typedef struct Module {
 
     struct {
         TypeEntry* entry_void;
+        TypeEntry* entry_never;
 
         TypeEntry* entry_c_char;
 

@@ -63,10 +63,10 @@ int main(int argc, char** argv) {
 
     char* buffer;
     int length;
-    Result read_file_result = read_file(in_file_path, &buffer, &length);
+    bool read_file_success = read_file(in_file_path, &buffer, &length);
 
-    if (read_file_result.type != Ok) {
-        result_print(read_file_result);
+    if (not read_file_success) {
+        fprintf(stderr, "failed to read file");
         return EXIT_FAILURE;
     }
 

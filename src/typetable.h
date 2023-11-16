@@ -8,6 +8,7 @@
 typedef struct TypeEntry TypeEntry;
 typedef enum TypeEntryKind {
     TypeEntryKind_Void,
+    TypeEntryKind_Never,
     TypeEntryKind_Ptr,
     TypeEntryKind_Int,
     TypeEntryKind_Bool,

@@ -19,18 +19,6 @@
 #define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
-typedef struct Result {
-    enum {
-        Ok,
-        Error,
-    } type;
-    const char* msg;
-} Result;
-
-void result_print(Result result);
-
-#define RESULT_OK (Result){ Ok, 0 }
-#define RESULT_ERR(m) (Result){ Error, m }
 
 void sil_panic(const char* format, ...)
     __attribute__((cold))

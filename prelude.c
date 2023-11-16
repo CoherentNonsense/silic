@@ -7,6 +7,7 @@
 
 typedef uint8_t u8;
 typedef int32_t i32;
+typedef int64_t i64;
 typedef char c_char;
 typedef size_t usize;
 typedef ssize_t isize;

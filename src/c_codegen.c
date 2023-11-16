@@ -4,25 +4,25 @@
 #include "parser.h"
 #include "os.h"
 
+#include <chnlib/strbuffer.h>
 #include <chnlib/logger.h>
-#include <chnlib/str.h>
 #include <chnlib/map.h>
 #include <stdio.h>
 
 
 typedef struct CodegenContext {
-    FILE* out_file;
+    StrBuffer strbuf;
     Module* module;
     usize indent_level;
 } CodegenContext;
 
 static void write(CodegenContext* context, String span) {
-    fwrite(span.ptr, span.len, 1, context->out_file);
+    strbuf_print_str(&context->strbuf, span);
 }
 
 // using a macro so we can use sizeof on the literal
 #define write_literal(context, literal) \
-    fwrite(literal, sizeof(literal) - 1, 1, context->out_file)
+    strbuf_print_lit(&context->strbuf, literal)
 
 void write_indent(CodegenContext* context) {
     for (usize i = 0; i < context->indent_level; i++) {
@@ -33,7 +33,33 @@ void write_indent(CodegenContext* context) {
 static void generate_statement(CodegenContext* context, Stmt* statement);
 static void generate_expression(CodegenContext* context, Expr* expression);
 
-static void generate_type(CodegenContext* context, Type* type) {
+static void generate_type(CodegenContext* context, TypeEntry* type) {
+    switch (type->kind) {
+        case TypeEntryKind_Void: { write_literal(context, "void"); break; }
+        case TypeEntryKind_Never: { write_literal(context, "void"); break; }
+        case TypeEntryKind_Ptr: {
+            generate_type(context, type->ptr.to);
+            if (not type->ptr.is_mut) { write_literal(context, " const"); }
+            write_literal(context, "*");
+            break;
+        }
+        case TypeEntryKind_Bool: { write_literal(context, "bool"); break; }
+        case TypeEntryKind_Int: {
+            // i'm porting to a string buffer soon i swer
+            if (type->bits == 8) {
+                write_literal(context, "u8");
+            } else if (type->bits == 32) {
+                write_literal(context, "i32");
+            } else if (type->bits == 64) {
+                write_literal(context, "i64");
+            } else {
+                sil_panic("AAAHHHHH %zu", type->bits);
+            }
+        }
+    }
+}
+
+static void generate_type_old(CodegenContext* context, Type* type) {
     switch (type->kind) {
 	case TypeKind_Void: {
 	    write_literal(context, "void");
@@ -51,7 +77,7 @@ static void generate_type(CodegenContext* context, Type* type) {
 	}
 
 	case TypeKind_Ptr: {
-	    generate_type(context, type->ptr.to);
+	    generate_type_old(context, type->ptr.to);
             if (not type->ptr.is_mut) { write_literal(context, " const"); }
 	    write_literal(context, "*");
 	    break;
@@ -196,11 +222,8 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	}
 
 	case ExprKind_Let: {
-            if (expression->let->type == null) {
-                write_literal(context, "i32");
-            } else {
-                generate_type(context, expression->let->type);
-            }
+            generate_type(context, expression->codegen.type);
+
 	    write_literal(context, " ");
             write_literal(context, "var_");
 	    write(context, expression->let->name);
@@ -279,7 +302,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 
         case ExprKind_Cast: {
             write_literal(context, "(");
-            generate_type(context, expression->cast->to);
+            generate_type_old(context, expression->cast->to);
             write_literal(context, ")");
             generate_expression(context, expression->cast->expr);
             break;
@@ -311,7 +334,7 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
 	sil_panic("Cannot generate signature for item type %d", item->kind);
     }
 
-    generate_type(context, signature->return_type);
+    generate_type_old(context, signature->return_type);
 
     write_literal(context, " ");
 
@@ -324,7 +347,7 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
     }
     for (usize i = 0; i < dynarray_len(signature->parameters); i++) {
 	FnParam* parameter = signature->parameters[i];
-	generate_type(context, parameter->type);
+	generate_type_old(context, parameter->type);
 	write_literal(context, " const ");
         write_literal(context, "var_");
 	write(context, parameter->name);
@@ -377,33 +400,14 @@ static void generate_ast(CodegenContext* context, AstRoot* ast) {
     }
 }
 
-void c_codegen_generate(Module* module, bool build) {
+String c_codegen_generate(Module* module) {
     CodegenContext context;
     context.indent_level = 0;
     context.module = module;
-
-    char* prelude_text;
-    int prelude_length;
-    Result prelude_result = read_file("prelude.c", &prelude_text, &prelude_length);
-    if (prelude_result.type != Ok) {
-        printf("Failed to load 'prelude.c'");
-        return;
-    }
-
-    context.out_file = fopen("build/ir.c", "wb");
-    if (context.out_file == null) {
-	    printf("Could not create ir\n");
-	    return;
-    }
-
-    fwrite(prelude_text, prelude_length, 1, context.out_file);
+    context.strbuf = strbuf_init();
 
     generate_ast(&context, module->ast);
 
-    fclose(context.out_file);
-
-    if (build) {
-	system("gcc -nostartfiles -O2 build/ir.c -o app");
-    }
+    return strbuf_to_string(&context.strbuf);
 }
 

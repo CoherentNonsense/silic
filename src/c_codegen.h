@@ -2,8 +2,8 @@
 #define C_CODEGEN_H
 
 #include "module.h"
-#include <stdbool.h>
+#include <chnlib/str.h>
 
-void c_codegen_generate(Module* module, bool build);
+String c_codegen_generate(Module* module);
 
 #endif
