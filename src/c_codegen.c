@@ -277,6 +277,14 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
             break;
         }
 
+        case ExprKind_Cast: {
+            write_literal(context, "(");
+            generate_type(context, expression->cast->to);
+            write_literal(context, ")");
+            generate_expression(context, expression->cast->expr);
+            break;
+        }
+
         default: sil_panic("Codegen Error: Unhandled expression %d", expression->kind);
     }
 }

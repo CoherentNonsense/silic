@@ -45,6 +45,7 @@ typedef enum TypeKind {
     TypeKind_Ptr,
     TypeKind_Array,
     TypeKind_Never,
+    TypeKind_Type,
 } TypeKind;
 
 typedef struct Integral {
@@ -92,6 +93,9 @@ typedef enum ExprKind {
     ExprKind_Break,
     ExprKind_Continue,
     ExprKind_Asm,
+    ExprKind_Field,
+    ExprKind_Index,
+    ExprKind_Cast,
 } ExprKind;
 
 typedef struct StringLit {
@@ -191,6 +195,11 @@ typedef struct Asm {
     DynArray(StringLit) source;
 } Asm;
 
+typedef struct Cast {
+    Expr* expr;
+    Type* to;
+} Cast;
+
 typedef struct Expr {
     ExprKind kind;
     union {
@@ -207,6 +216,7 @@ typedef struct Expr {
         bool boolean;
         Loop* loop;
         Asm* asm;
+        Cast* cast;
     };
 } Expr;
 

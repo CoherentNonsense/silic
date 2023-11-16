@@ -63,6 +63,7 @@ char* token_string(TokenKind kind) {
         case TokenKind_KeywordOr: return "keyword 'or'";
         case TokenKind_KeywordNot: return "keyword 'not'";
         case TokenKind_KeywordMut: return "keyword 'mut'";
+        case TokenKind_KeywordAs: return "keyword 'as'";
     }
 
     sil_panic("unhandled token");

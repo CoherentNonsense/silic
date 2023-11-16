@@ -3,6 +3,7 @@
 #include "ast.h"
 #include "typetable.h"
 #include <chnlib/logger.h>
+#include <chnlib/maybe.h>
 #include <stdbool.h>
 #include <iso646.h>
 
@@ -28,6 +29,11 @@ static void setup_primitive_types(Module* module) {
     module->primitives.entry_usize = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
     module->primitives.entry_usize->integral.is_signed = false;
     map_insert(module->types, str_from_lit("usize"), &module->primitives.entry_usize);
+
+    // isize
+    module->primitives.entry_usize = typetable_new_type(&module->type_table, TypeEntryKind_Int, 64);
+    module->primitives.entry_usize->integral.is_signed = true;
+    map_insert(module->types, str_from_lit("isize"), &module->primitives.entry_usize);
 
     // unsigned int
     module->primitives.entry_u8 = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
@@ -68,11 +74,11 @@ static TypeEntry* resolve_type(Module* module, Type* type) {
         case TypeKind_Void: return module->primitives.entry_void;
 
         case TypeKind_Symbol: {
-            TypeEntry* entry = map_get(module->types, type->symbol);
-            if (entry == null) {
-                sil_panic("reference to undeclared type");
+            Maybe(TypeEntry*) entry = map_get(module->types, type->symbol);
+            if (entry == None) {
+                sil_panic("Codegen Error: unhandled type");
             }
-            return entry;
+            return unwrap(entry);
         }
 
         case TypeKind_Ptr: {
@@ -194,12 +200,12 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
         case ExprKind_FnCall: {
 	    FnCall* fn_call = expression->fn_call;
 
-	    Item* item = map_get(module->items, fn_call->name);
-            if (item == null) {
+	    Maybe(Item*) item = map_get(module->items, fn_call->name);
+            if (item == None) {
                 sil_panic("Call to undeclared function %.*s", str_format(fn_call->name));
             }
 
-	    FnDef* fn_definition = item->fn_definition;
+	    FnDef* fn_definition = unwrap(item)->fn_definition;
 
             // analyze arguments
 	    for (size_t i = 0; i < dynarray_len(fn_call->arguments); i += 1) {
@@ -253,6 +259,9 @@ static TypeEntry* analyze_expression(Module* module, Expr* expression) {
         case ExprKind_BoolLit: {
             return module->primitives.entry_bool;
         }
+        case ExprKind_Cast: {
+            return resolve_type(module, expression->cast->to);
+        }
         default: sil_panic("Analyzer Error: unhandled expression %d", expression->kind);
     }
 }
@@ -272,7 +281,8 @@ static bool analyze_fn_definition(Module* module, FnDef* fn_definition) {
     // add paramaters to symtable
     for (size_t i = 0; i < dynarray_len(fn_definition->signature->parameters); i += 1) {
         FnParam* param = fn_definition->signature->parameters[i];
-        SymEntry entry = (SymEntry){ resolve_type(module, param->type) };
+        TypeEntry* param_type = resolve_type(module, param->type);
+        SymEntry entry = (SymEntry){ param_type };
         symtable_insert(&module->symbol_table, param->name, &entry);
     }
 

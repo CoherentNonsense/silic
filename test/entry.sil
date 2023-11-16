@@ -18,7 +18,8 @@ fn syscall3(id: isize, arg1: isize, arg2: isize, arg3: isize) -> isize {
 
 pub fn _start() -> ! {
     let msg = "Hello, World!";
-    syscall3(1, 1, msg.ptr, msg.len);
+    let len = 13 as isize;
+    syscall3(1 as isize, 1 as isize, msg as isize, len as isize);
 
-    syscall(60, 0);
+    syscall1(60 as isize, 0 as isize);
 }

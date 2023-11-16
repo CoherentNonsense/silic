@@ -443,6 +443,21 @@ static Maybe(Expr*) parse_expression_prec(ParserContext* context, int precedence
 
     while (1) {
 	Token* operator_token = current_token(context);
+
+        // special cases
+        // casting
+        if (operator_token->kind == TokenKind_KeywordAs) {
+            consume_token(context);
+
+            Expr* cast = malloc(sizeof(Expr));
+            cast->kind = ExprKind_Cast;
+            cast->cast = malloc(sizeof(Cast));
+            cast->cast->expr = left_expression;
+            cast->cast->to = try(parse_type(context));
+            left_expression = cast;
+            continue;
+        }
+
 	int left, right;
 	operator_precedence(operator_token->kind, &left, &right);
 

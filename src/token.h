@@ -61,6 +61,7 @@ typedef enum TokenKind {
     TokenKind_KeywordOr,
     TokenKind_KeywordNot,
     TokenKind_KeywordMut,
+    TokenKind_KeywordAs,
 } TokenKind;
 
 typedef struct TextPosition {
