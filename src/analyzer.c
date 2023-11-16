@@ -21,7 +21,7 @@ static void setup_primitive_types(Module* module) {
 
     // char
     module->primitives.entry_c_char = typetable_new_type(&module->type_table, TypeEntryKind_Int, 8);
-    module->primitives.entry_c_char->integral.is_signed = true;
+    module->primitives.entry_c_char->integral.is_signed = false;
     map_insert(module->types, str_from_lit("c_char"), &module->primitives.entry_c_char);
 
     // bool

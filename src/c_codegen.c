@@ -5,6 +5,7 @@
 #include "os.h"
 
 #include <chnlib/strbuffer.h>
+#include <chnlib/str.h>
 #include <chnlib/logger.h>
 #include <chnlib/map.h>
 #include <stdio.h>
@@ -16,17 +17,10 @@ typedef struct CodegenContext {
     usize indent_level;
 } CodegenContext;
 
-static void write(CodegenContext* context, String span) {
-    strbuf_print_str(&context->strbuf, span);
-}
-
-// using a macro so we can use sizeof on the literal
-#define write_literal(context, literal) \
-    strbuf_print_lit(&context->strbuf, literal)
 
 void write_indent(CodegenContext* context) {
     for (usize i = 0; i < context->indent_level; i++) {
-	write_literal(context, "    ");
+	strbuf_print_lit(&context->strbuf, "    ");
     }
 }
 
@@ -35,146 +29,120 @@ static void generate_expression(CodegenContext* context, Expr* expression);
 
 static void generate_type(CodegenContext* context, TypeEntry* type) {
     switch (type->kind) {
-        case TypeEntryKind_Void: { write_literal(context, "void"); break; }
-        case TypeEntryKind_Never: { write_literal(context, "void"); break; }
+        case TypeEntryKind_Void: { strbuf_print_lit(&context->strbuf, "void"); break; }
+        case TypeEntryKind_Never: { strbuf_print_lit(&context->strbuf, "void"); break; }
         case TypeEntryKind_Ptr: {
             generate_type(context, type->ptr.to);
-            if (not type->ptr.is_mut) { write_literal(context, " const"); }
-            write_literal(context, "*");
+            strbuf_printf(&context->strbuf, "%s*", type->ptr.is_mut ? "" : " const");
             break;
         }
-        case TypeEntryKind_Bool: { write_literal(context, "bool"); break; }
+        case TypeEntryKind_Bool: { strbuf_print_lit(&context->strbuf, "bool"); break; }
         case TypeEntryKind_Int: {
-            // i'm porting to a string buffer soon i swer
-            if (type->bits == 8) {
-                write_literal(context, "u8");
-            } else if (type->bits == 32) {
-                write_literal(context, "i32");
-            } else if (type->bits == 64) {
-                write_literal(context, "i64");
-            } else {
-                sil_panic("AAAHHHHH %zu", type->bits);
-            }
+            strbuf_printf(&context->strbuf, "%c%zu", type->integral.is_signed ? 'i' : 'u', type->bits);
         }
     }
 }
-
 static void generate_type_old(CodegenContext* context, Type* type) {
     switch (type->kind) {
-	case TypeKind_Void: {
-	    write_literal(context, "void");
-	    break;
-	}
+        case TypeKind_Void: {
+            strbuf_print_lit(&context->strbuf, "void");
+                break;
+        }
 
-	case TypeKind_Never: {
-	    write_literal(context, "void");
-	    break;
-	}
+        case TypeKind_Never: {
+            strbuf_print_lit(&context->strbuf, "void");
+            break;
+        }
 
-	case TypeKind_Symbol: {
-	    write(context, type->symbol);
-	    break;
-	}
+        case TypeKind_Symbol: {
+            strbuf_print_str(&context->strbuf, type->symbol);
+            break;
+        }
 
-	case TypeKind_Ptr: {
-	    generate_type_old(context, type->ptr.to);
-            if (not type->ptr.is_mut) { write_literal(context, " const"); }
-	    write_literal(context, "*");
-	    break;
-	}
+        case TypeKind_Ptr: {
+            generate_type_old(context, type->ptr.to);
+            strbuf_printf(&context->strbuf, "%s*", type->ptr.is_mut ? "" : " const");
+            break;
+        }
 
-	default: sil_panic("Unhandled silic->c type");
+        default: sil_panic("Unhandled silic->c type");
     }
 }
 
 static void generate_block(CodegenContext* context, Block* block) {
-    write_literal(context, "{\n");
+    strbuf_print_lit(&context->strbuf, "{\n");
     context->indent_level += 1;
 
     for (usize i = 0; i < dynarray_len(block->statements); i++) {
-	Stmt* statement = block->statements[i];
-	generate_statement(context, statement);
+        Stmt* statement = block->statements[i];
+        generate_statement(context, statement);
     }
 
     context->indent_level -= 1;
     write_indent(context);
-    write_literal(context, "}");
+    strbuf_print_lit(&context->strbuf, "}");
 }
 
 static void generate_number_literal(CodegenContext* context, NumberLit* number_literal) {
-    write(context, number_literal->span);
+    strbuf_print_str(&context->strbuf, number_literal->span);
 }
 
 static void generate_binop(CodegenContext* context, BinOp* binop) {
     switch (binop->kind) {
-        case BinOpKind_CmpEq: write_literal(context, "eqi32("); break;
-        case BinOpKind_CmpNotEq: write_literal(context, "neqi32("); break;
-        case BinOpKind_CmpGt: write_literal(context, "gti32("); break;
-        case BinOpKind_CmpLt: write_literal(context, "lti32("); break;
-        case BinOpKind_And: write_literal(context, "and("); break;
-        case BinOpKind_Or: write_literal(context, "or("); break;
-        case BinOpKind_Assign: write_literal(context, "wri32(&"); break;
-	case BinOpKind_Add: write_literal(context, "addi32("); break;
-	case BinOpKind_Sub: write_literal(context, "subi32("); break;
-	case BinOpKind_Mul: write_literal(context, "muli32("); break;
-	case BinOpKind_Div: write_literal(context, "divi32("); break;
+        case BinOpKind_CmpEq: strbuf_print_lit(&context->strbuf, "eqi32("); break;
+        case BinOpKind_CmpNotEq: strbuf_print_lit(&context->strbuf, "neqi32("); break;
+        case BinOpKind_CmpGt: strbuf_print_lit(&context->strbuf, "gti32("); break;
+        case BinOpKind_CmpLt: strbuf_print_lit(&context->strbuf, "lti32("); break;
+        case BinOpKind_And: strbuf_print_lit(&context->strbuf, "and("); break;
+        case BinOpKind_Or: strbuf_print_lit(&context->strbuf, "or("); break;
+        case BinOpKind_Assign: strbuf_print_lit(&context->strbuf, "wri32(&"); break;
+	case BinOpKind_Add: strbuf_print_lit(&context->strbuf, "addi32("); break;
+	case BinOpKind_Sub: strbuf_print_lit(&context->strbuf, "subi32("); break;
+	case BinOpKind_Mul: strbuf_print_lit(&context->strbuf, "muli32("); break;
+	case BinOpKind_Div: strbuf_print_lit(&context->strbuf, "divi32("); break;
         default: sil_panic("Codegen error: Unhandled binary operator %d", binop->kind);
     }
 
     generate_expression(context, binop->left);
-    write_literal(context, ", ");
+    strbuf_print_lit(&context->strbuf, ", ");
     generate_expression(context, binop->right);
-    write_literal(context, ")");
+    strbuf_print_lit(&context->strbuf, ")");
 }
 
 static void generate_asm(CodegenContext* context, Asm* asm) {
     // HACK: this wholbe backend is really all a hack tbh
     static char tmp_var[] = "expr_val0";
     for (usize i = 0; i < dynarray_len(asm->outputs); i += 1) {
-        write_literal(context, "ssize_t ");
-        write_literal(context, tmp_var);
-        write_literal(context, ";\n");
+        strbuf_printf(&context->strbuf, "isize %s;\n", tmp_var);
     }
 
     write_indent(context);
-    write_literal(context, "__asm__ volatile (");
+    strbuf_print_lit(&context->strbuf, "__asm__ volatile (");
     for (usize i = 0; i < dynarray_len(asm->source); i += 1) {
-        write(context, asm->source[i].span);
+        strbuf_print_str(&context->strbuf, asm->source[i].span);
     }
 
-    write_literal(context, ":");
+    strbuf_print_lit(&context->strbuf, ":");
 
-    for (usize i = 0; i < dynarray_len(asm->outputs); i += 1) {
-        write_literal(context, "\"=");
-        write(context, asm->outputs[i]);
-        write_literal(context, "\"(");
-        write_literal(context, tmp_var);
-        write_literal(context, "):");
-    }
+    // HACK: only one output rn
+    strbuf_printf(&context->strbuf, "\"=%.*s\"(%s):", str_format(asm->outputs[0]), tmp_var);
 
     for (usize i = 0; i < dynarray_len(asm->inputs); i += 1) {
-        if (i > 0) {
-            write_literal(context, ",");
-        }
-        write_literal(context, "\"");
-        write(context, asm->inputs[i].reg);
-        write_literal(context, "\"(");
+        if (i > 0) { strbuf_print_lit(&context->strbuf, ","); }
+
+        strbuf_printf(&context->strbuf, "\"%.*s\"(", str_format(asm->inputs[i].reg));
         generate_expression(context, asm->inputs[i].val);
-        write_literal(context, ")");
+        strbuf_print_lit(&context->strbuf, ")");
     }
 
-    write_literal(context, ":");
+    strbuf_print_lit(&context->strbuf, ":");
 
     for (usize i = 0; i < dynarray_len(asm->clobbers); i += 1) {
-        if (i > 0) {
-            write_literal(context, ",");
-        }
-        write_literal(context, "\"");
-        write(context, asm->clobbers[i]);
-        write_literal(context, "\"");
+        if (i > 0) { strbuf_print_lit(&context->strbuf, ","); }
+        strbuf_printf(&context->strbuf, "\"%.*s\"", str_format(asm->clobbers[i]));
     }
 
-    write_literal(context, ");");
+    strbuf_print_lit(&context->strbuf, ");");
 
     tmp_var[8] += 1;
 }
@@ -187,36 +155,33 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	}
 
 	case ExprKind_StringLit: {
-	    write(context, expression->string_literal.span);
+	    strbuf_print_str(&context->strbuf, expression->string_literal.span);
 	    break;
 	}
 
         case ExprKind_BoolLit: {
-            expression->boolean ? write_literal(context, "true") : write_literal(context, "false");
+            strbuf_printf(&context->strbuf, "%s", expression->boolean ? "true" : "false");
             break;
         }
 
 	case ExprKind_Symbol: {
-            write_literal(context, "var_");
-	    write(context, expression->symbol);
+            strbuf_printf(&context->strbuf, "var_%.*s", str_format(expression->symbol));
 	    break;
 	}
 
 	case ExprKind_FnCall: {
 	    FnCall* call = expression->fn_call;
 
-	    write(context, call->name);
-	    write_literal(context, "(");
+	    strbuf_printf(&context->strbuf, "%.*s(", str_format(call->name));
 
 	    for (usize i = 0; i < dynarray_len(call->arguments); i++) {
+                if (i > 0) { strbuf_print_lit(&context->strbuf, ","); }
+
 		Expr* arg = call->arguments[i];
 		generate_expression(context, arg);
-		if (i < dynarray_len(call->arguments) - 1) {
-		    write_literal(context, ", ");
-		}
 	    }
 
-	    write_literal(context, ")");
+	    strbuf_print_lit(&context->strbuf, ")");
 	    
 	    break;
 	}
@@ -224,17 +189,14 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	case ExprKind_Let: {
             generate_type(context, expression->codegen.type);
 
-	    write_literal(context, " ");
-            write_literal(context, "var_");
-	    write(context, expression->let->name);
-	    write_literal(context, " = ");
+	    strbuf_printf(&context->strbuf, " var_%.*s = ", str_format(expression->let->name));
 	    generate_expression(context, expression->let->value);
 
 	    break;
 	}
 
 	case ExprKind_Ret: {
-	    write_literal(context, "return ");
+	    strbuf_print_lit(&context->strbuf, "return ");
 	    generate_expression(context, expression->ret);
 	    
 	    break;
@@ -248,12 +210,12 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	case ExprKind_BinOp: generate_binop(context, expression->binary_operator); break;
 
 	case ExprKind_If: {
-	    write_literal(context, "if (");
+	    strbuf_print_lit(&context->strbuf, "if (");
 	    generate_expression(context, expression->if_expr->condition);
-	    write_literal(context, ") ");
+	    strbuf_print_lit(&context->strbuf, ") ");
 	    generate_block(context, expression->if_expr->then->block);
 	    if (expression->if_expr->otherwise != null) {
-		write_literal(context, " else ");
+		strbuf_print_lit(&context->strbuf, " else ");
 		generate_expression(context, expression->if_expr->otherwise);
 	    }
 
@@ -262,38 +224,38 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 
 	case ExprKind_Match: {
 	    Match* match = expression->match;
-	    write_literal(context, "switch (");
+	    strbuf_print_lit(&context->strbuf, "switch (");
 	    generate_expression(context, expression->match->condition);
-	    write_literal(context, ") {\n");
+	    strbuf_print_lit(&context->strbuf, ") {\n");
 	    context->indent_level += 1;
 	    for (usize i = 0; i < dynarray_len(match->arms); i++) {
 		MatchArm* arm = match->arms[i];
 		write_indent(context);
-		write_literal(context, "case ");
+		strbuf_print_lit(&context->strbuf, "case ");
 		generate_number_literal(context, arm->pattern);
-		write_literal(context, ": ");
+		strbuf_print_lit(&context->strbuf, ": ");
 		generate_expression(context, arm->then);
 		if (arm->then->kind != ExprKind_Block) {
-		    write_literal(context, "; break;");
+		    strbuf_print_lit(&context->strbuf, "; break;");
 		} else {
-		    write_literal(context, " break;");
+		    strbuf_print_lit(&context->strbuf, " break;");
 		}
-		write_literal(context, "\n");
+		strbuf_print_lit(&context->strbuf, "\n");
 	    }
 	    context->indent_level -= 1;
 	    write_indent(context);
-	    write_literal(context, "}");
+	    strbuf_print_lit(&context->strbuf, "}");
 	    break;
 	}
 
         case ExprKind_Loop: {
-            write_literal(context, "while (true) ");
+            strbuf_print_lit(&context->strbuf, "while (true) ");
             generate_expression(context, expression->loop->body);
             break;
         }
 
-        case ExprKind_Break: { write_literal(context, "break"); break; }
-        case ExprKind_Continue: { write_literal(context, "continue"); break; }
+        case ExprKind_Break: { strbuf_print_lit(&context->strbuf, "break"); break; }
+        case ExprKind_Continue: { strbuf_print_lit(&context->strbuf, "continue"); break; }
 
         case ExprKind_Asm: {
             generate_asm(context, expression->asm);
@@ -301,9 +263,9 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
         }
 
         case ExprKind_Cast: {
-            write_literal(context, "(");
+            strbuf_print_lit(&context->strbuf, "(");
             generate_type_old(context, expression->cast->to);
-            write_literal(context, ")");
+            strbuf_print_lit(&context->strbuf, ")");
             generate_expression(context, expression->cast->expr);
             break;
         }
@@ -316,11 +278,7 @@ static void generate_statement(CodegenContext* context, Stmt* statement) {
     write_indent(context);
     if (statement->kind == StmtKind_Expr) {
 	generate_expression(context, statement->expression);
-	if (!parser_should_remove_statement_semicolon(statement->expression)) {
-	    write_literal(context, ";\n");
-	} else {
-	    write_literal(context, "\n");
-	}
+        strbuf_printf(&context->strbuf, "%s\n", parser_should_remove_statement_semicolon(statement->expression) ? "" : ";");
     }
 }
 
@@ -336,39 +294,32 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
 
     generate_type_old(context, signature->return_type);
 
-    write_literal(context, " ");
-
-    write(context, item->name);
-    write_literal(context, "(");
+    strbuf_printf(&context->strbuf, " %.*s(", str_format(item->name));
 
     // void as empty parameters
     if (dynarray_len(signature->parameters) == 0) {
-        write_literal(context, "void");
+        strbuf_print_lit(&context->strbuf, "void");
     }
     for (usize i = 0; i < dynarray_len(signature->parameters); i++) {
+        if (i > 0) { strbuf_print_lit(&context->strbuf, ", "); }
 	FnParam* parameter = signature->parameters[i];
 	generate_type_old(context, parameter->type);
-	write_literal(context, " const ");
-        write_literal(context, "var_");
-	write(context, parameter->name);
-	if (i < dynarray_len(signature->parameters) - 1) {
-	    write_literal(context, ", ");
-	}
+	strbuf_printf(&context->strbuf, " const var_%.*s", str_format(parameter->name));
     }
 
-    write_literal(context, ")");
+    strbuf_print_lit(&context->strbuf, ")");
 }
 
 static void generate_definition(CodegenContext* context, Item* item) {
     switch (item->kind) {
 	case ItemKind_FnDef:
 	    if (!item->visibility.is_pub) {
-		write_literal(context, "static ");
+		strbuf_print_lit(&context->strbuf, "static ");
 	    }
 	    generate_fn_signature(context, item);
-	    write_literal(context, " ");
+	    strbuf_print_lit(&context->strbuf, " ");
 	    generate_block(context, item->fn_definition->body->block);
-	    write_literal(context, "\n\n");
+	    strbuf_print_lit(&context->strbuf, "\n\n");
 	    break;
 	
 	default: return;
@@ -382,17 +333,17 @@ static void generate_forward_declarations(CodegenContext* context) {
         Item* item = map_iter_val(context->module->items, iter);
 
         if (item->kind != ItemKind_ExternFn and !item->visibility.is_pub) {
-            write_literal(context, "static ");
+            strbuf_print_lit(&context->strbuf, "static ");
         }
 	generate_fn_signature(context, item);
-	write_literal(context, ";\n");
+	strbuf_print_lit(&context->strbuf, ";\n");
     };
 }
 
 static void generate_ast(CodegenContext* context, AstRoot* ast) {
     generate_forward_declarations(context);
 
-    write_literal(context, "\n");
+    strbuf_print_lit(&context->strbuf, "\n");
 
     for (usize i = 0; i < dynarray_len(ast->items); i++) {
 	Item* item = ast->items[i];
