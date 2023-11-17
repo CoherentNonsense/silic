@@ -321,7 +321,10 @@ static bool analyze_fn_definition(Module* module, FnDef* fn_definition) {
     for (size_t i = 0; i < dynarray_len(fn_definition->signature->parameters); i += 1) {
         FnParam* param = fn_definition->signature->parameters[i];
         type_id param_type = resolve_type(module, param->type);
-        SymEntry entry = (SymEntry){ param_type };
+        SymEntry entry = (SymEntry){
+            .type = param_type,
+            .expression = null,
+        };
         symtable_insert(&module->symbol_table, param->name, &entry);
     }
 
@@ -352,6 +355,19 @@ static bool analyze_ast(Module* module, AstRoot* root) {
             case ItemKind_ExternFn: // make these part of an import table
             case ItemKind_FnDef:
                 map_insert(module->items, item->name, &item); break;
+            case ItemKind_Const: {
+                type_id explicit_type = resolve_type(module, item->constant->type);
+                type_id implicit_type = analyze_expression(module, item->constant->value);
+                if (explicit_type != 0 and explicit_type != implicit_type) {
+                    sil_panic("constant type doesn't match expression");
+                }
+                SymEntry entry = {
+                    .type = implicit_type,
+                    .expression = item->constant->value,
+                };
+                symtable_insert(&module->symbol_table, item->name, &entry);
+                break;
+            }
             default:
                 sil_panic("Analyzer Error: unhandled top level item");
         }

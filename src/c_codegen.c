@@ -412,17 +412,34 @@ static void generate_definition(CodegenContext* context, Item* item) {
 }
 
 static void generate_forward_declarations(CodegenContext* context) {
-    MapIter iter = map_iter(context->module->items);
-    
-    while (map_next(context->module->items, iter)) {
-        Item* item = map_iter_val(context->module->items, iter);
+    {
+        MapIter iter = map_iter(context->module->items);
+        while (map_next(context->module->items, iter)) {
+            Item* item = map_iter_val(context->module->items, iter);
 
-        if (item->kind != ItemKind_ExternFn and !item->visibility.is_pub) {
-            strbuf_print_lit(&context->strbuf, "static ");
+            if (item->kind != ItemKind_ExternFn and !item->visibility.is_pub) {
+                strbuf_print_lit(&context->strbuf, "static ");
+            }
+            generate_fn_signature(context, item);
+            strbuf_print_lit(&context->strbuf, ";\n");
+        };
+    }
+
+    strbuf_print_lit(&context->strbuf, "\n");
+
+    {
+        Map(SymEntry) root_syms = context->module->symbol_table.root_scope.symbols;
+        MapIter iter = map_iter(root_syms);
+        while (map_next(root_syms, iter)) {
+            String key = map_iter_key(iter);
+            SymEntry* entry = map_iter_val_ref(root_syms, iter);
+
+            generate_type(context, entry->type);
+            strbuf_printf(&context->strbuf, " %.*s = ", str_format(key));
+            generate_expression(context, entry->expression);
+            strbuf_print_lit(&context->strbuf, ";\n");
         }
-	generate_fn_signature(context, item);
-	strbuf_print_lit(&context->strbuf, ";\n");
-    };
+    }
 }
 
 static void generate_ast(CodegenContext* context, AstRoot* ast) {

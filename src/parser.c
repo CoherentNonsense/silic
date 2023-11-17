@@ -604,9 +604,13 @@ static Maybe(Constant*) parse_constant(ParserContext* context, String* name) {
     Token* ident = try(expect_token(context, TokenKind_Symbol));
     *name = ident->span;
 
-    try(expect_token(context, TokenKind_Colon));
+    if (current_token(context)->kind == TokenKind_Colon) {
+        consume_token(context);
 
-    constant->type = try(parse_type(context));
+        constant->type = try(parse_type(context));
+    } else {
+        constant->type = null;
+    }
 
     try(expect_token(context, TokenKind_Equals));
 

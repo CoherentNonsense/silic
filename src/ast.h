@@ -20,6 +20,7 @@ typedef struct Expr Expr;
 //       so they can be references later. don't...
 typedef struct SymEntry {
     type_id type;
+    Expr* expression;
 } SymEntry;
 
 typedef struct Scope {

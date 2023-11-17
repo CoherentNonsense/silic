@@ -26,14 +26,14 @@ fn exit(status: i32) -> unreachable {
     unreachable
 }
 
-pub fn _start() -> unreachable {
-    let stdout = 1 as isize;
-    let EXIT_SUCCESS = 0;
+const STDOUT = 1 as isize;
+const EXIT_SUCCESS = 0;
 
+pub fn _start() -> unreachable {
     let msg = "hey, there!\n";
     let len = 14 as isize;
 
-    write(stdout, msg, len);
+    write(STDOUT, msg, len);
 
     exit(EXIT_SUCCESS)
 }
