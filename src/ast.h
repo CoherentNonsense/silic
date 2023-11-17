@@ -37,40 +37,40 @@ typedef struct SymTable {
 // ---- //
 // Type //
 // ---- //
-typedef struct Type Type;
+typedef struct Ast_Type Ast_Type;
 
-typedef enum TypeKind {
+typedef enum Ast_TypeKind {
     TypeKind_Void,
     TypeKind_Symbol,
     TypeKind_Ptr,
     TypeKind_Array,
     TypeKind_Never,
     TypeKind_Type,
-} TypeKind;
+} Ast_TypeKind;
 
-typedef struct Integral {
+typedef struct Ast_Integral {
     bool is_signed;
     uint64_t value;
-} Integer;
+} Ast_Integer;
 
-typedef struct Decimal {
+typedef struct Ast_Decimal {
     double value;
-} Decimal;
+} Ast_Decimal;
 
-typedef struct Ptr {
-    Type* to;
+typedef struct Ast_Ptr {
+    Ast_Type* to;
     bool is_mut;
-} Ptr;
+} Ast_Ptr;
 
-typedef struct Type {
-    TypeKind kind;
+typedef struct Ast_Type {
+    Ast_TypeKind kind;
     union {
 	String symbol;
-	Ptr ptr;
-	Integer integer;
-	Decimal decimal;
+	Ast_Ptr ptr;
+	Ast_Integer integer;
+	Ast_Decimal decimal;
     };
-} Type;
+} Ast_Type;
 
 
 // ---------- //
@@ -92,6 +92,7 @@ typedef enum ExprKind {
     ExprKind_Loop,
     ExprKind_Break,
     ExprKind_Continue,
+    ExprKind_Unreachable,
     ExprKind_Asm,
     ExprKind_Field,
     ExprKind_Index,
@@ -174,7 +175,7 @@ typedef enum OpPrec {
 
 typedef struct Let {
     String name;
-    Type* type;
+    Ast_Type* type;
     Expr* value;
 } Let;
 
@@ -197,7 +198,7 @@ typedef struct Asm {
 
 typedef struct Cast {
     Expr* expr;
-    Type* to;
+    Ast_Type* to;
 } Cast;
 
 typedef struct Expr {
@@ -230,6 +231,7 @@ typedef struct Expr {
 // --------- //
 typedef enum StmtKind {
     StmtKind_Expr,
+    StmtKind_NakedExpr,
 } StmtKind;
 
 typedef struct Stmt {
@@ -256,12 +258,12 @@ typedef struct Visibilty {
 
 typedef struct FnParam {
     String name;
-    Type* type;
+    Ast_Type* type;
 } FnParam;
 
 typedef struct FnSig {
     DynArray(FnParam*) parameters;
-    Type* return_type;
+    Ast_Type* return_type;
 } FnSig;
 
 typedef struct FnDef {
@@ -276,7 +278,7 @@ typedef struct ExternFn {
 typedef struct StructField {
     Visibility visibility;
     String name;
-    Type* type;
+    Ast_Type* type;
 } StructField;
 
 typedef struct StructDef {
@@ -284,7 +286,7 @@ typedef struct StructDef {
 } StructDef;
 
 typedef struct Constant {
-    Type* type;
+    Ast_Type* type;
     Expr* value;
 } Constant;
 
@@ -303,5 +305,7 @@ typedef struct Item {
 typedef struct AstRoot {
     DynArray(Item*) items;
 } AstRoot;
+
+bool should_remove_statement_semi(Expr* expression);
 
 #endif // !AST_H

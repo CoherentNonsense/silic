@@ -41,6 +41,7 @@ typedef enum TokenKind {
     TokenKind_Percent,
 
     TokenKind_KeywordAsm,
+    TokenKind_KeywordUnreachable,
     TokenKind_KeywordVolatile,
     TokenKind_KeywordLet,
     TokenKind_KeywordConst,

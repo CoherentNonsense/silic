@@ -43,6 +43,7 @@ char* token_string(TokenKind kind) {
         case TokenKind_Dot: return "'.'";
 	case TokenKind_Percent: return "'%'";
         case TokenKind_KeywordAsm: return "keyword 'asm'";
+        case TokenKind_KeywordUnreachable: return "keyword 'unreachable'";
         case TokenKind_KeywordVolatile: return "keyword 'volatile'";
         case TokenKind_KeywordLet: return "keyword 'let'";
 	case TokenKind_KeywordConst: return "keyword 'const'";

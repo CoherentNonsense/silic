@@ -72,8 +72,8 @@ static Maybe(u8) expect_semicolon(ParserContext* context) {
     return Some((u8)0);
 }
 
-static Maybe(Type*) parse_type(ParserContext* context) {
-    Type* type = malloc(sizeof(Type));
+static Maybe(Ast_Type*) parse_type(ParserContext* context) {
+    Ast_Type* type = malloc(sizeof(Ast_Type));
     
     Token* token = consume_token(context);
     type->symbol = token->span;
@@ -91,7 +91,7 @@ static Maybe(Type*) parse_type(ParserContext* context) {
 	    break;
 	}
 
-	case TokenKind_Bang: {
+	case TokenKind_KeywordUnreachable: {
 	    type->kind = TypeKind_Never;
 	    break;
 	}
@@ -141,9 +141,18 @@ static Maybe(Block*) parse_block(ParserContext* context) {
     
     while (current_token(context)->kind != TokenKind_RBrace) {
 	Stmt* statement = try(parse_statement(context));
-
 	dynarray_push(block->statements, &statement);
+
+        // an expression without a semi indicates the end of a block
+        if (statement->kind == StmtKind_NakedExpr) {
+            // if we're not at a '}', then we exited early and there should be a semi
+            if (current_token(context)->kind != TokenKind_RBrace) {
+                try(expect_semicolon(context));
+            }
+            break;
+        }
     }
+
 
     consume_token(context);
 
@@ -354,6 +363,12 @@ static Maybe(Expr*) parse_primary_expression(ParserContext* context) {
             break;
         }
 
+        case TokenKind_KeywordUnreachable: {
+            consume_token(context);
+            expression->kind = ExprKind_Unreachable;
+            break;
+        }
+
 	case TokenKind_KeywordIf: {
 	    consume_token(context);
 	    expression->kind = ExprKind_If;
@@ -509,8 +524,12 @@ static Maybe(Stmt*) parse_statement(ParserContext* context) {
 	    statement->kind = StmtKind_Expr;
 	    statement->expression = try(parse_expression(context));
 	   
-	    if (!parser_should_remove_statement_semicolon(statement->expression)) {
-		try(expect_semicolon(context));
+	    if (not should_remove_statement_semi(statement->expression)) {
+                if (current_token(context)->kind == TokenKind_Semicolon) {
+                    consume_token(context);
+                } else {
+                    statement->kind = StmtKind_NakedExpr;
+                }
 	    }
 
 	    break;
@@ -555,7 +574,7 @@ static Maybe(FnSig*) parse_fn_signature(ParserContext* context, String* name) {
 	consume_token(context);
 	fn_sig->return_type = try(parse_type(context));
     } else {
-	Type* void_type = malloc(sizeof(Type));
+	Ast_Type* void_type = malloc(sizeof(Ast_Type));
 	void_type->kind = TypeKind_Void;
 	fn_sig->return_type = void_type;
     }
@@ -673,12 +692,3 @@ void parser_parse(Module* module) {
     }
 }
 
-bool parser_should_remove_statement_semicolon(Expr* expression) {
-    return (
-	expression->kind == ExprKind_If ||
-	expression->kind == ExprKind_Match ||
-	expression->kind == ExprKind_Block ||
-        expression->kind == ExprKind_Loop ||
-        expression->kind == ExprKind_Asm
-    );
-}

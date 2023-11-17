@@ -1,4 +1,4 @@
-fn syscall1(id: isize, arg1: isize) -> ! {
+fn syscall1(id: isize, arg1: isize) -> isize {
     asm volatile (
         a = id,
         D = arg1,
@@ -16,22 +16,24 @@ fn syscall3(id: isize, arg1: isize, arg2: isize, arg3: isize) -> isize {
     ) -> a { "syscall" }
 }
 
-fn write(stream: isize, msg: *c_char, len: isize) -> isize {
-    return syscall3(1 as isize, stream as isize, msg as isize, len as isize);
+fn write(stream: isize, msg: *u8, len: isize) -> isize {
+    syscall3(1 as isize, stream as isize, msg as isize, len as isize)
 }
 
-fn exit(status: i32) -> ! {
+fn exit(status: i32) -> unreachable {
     syscall1(60 as isize, status as isize);
+
+    unreachable
 }
 
-pub fn _start() -> ! {
+pub fn _start() -> unreachable {
     let stdout = 1 as isize;
     let EXIT_SUCCESS = 0;
 
-    let msg: *c_char = "Hello, World!\n";
+    let msg = "hey, there!\n";
     let len = 14 as isize;
 
     write(stdout, msg, len);
 
-    exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS)
 }

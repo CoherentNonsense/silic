@@ -38,10 +38,12 @@ typedef struct Module {
         type_id entry_never;
 
         type_id entry_c_char;
+        type_id entry_c_str;
 
         type_id entry_bool;
 
         type_id entry_usize;
+        type_id entry_isize;
         
         type_id entry_u8;
         type_id entry_u16;

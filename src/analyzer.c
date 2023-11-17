@@ -28,12 +28,12 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("bool"), &module->primitives.entry_bool);
 
     // usize
-    module->primitives.entry_usize = typetable_new_int(&module->type_table, 64, false);
+    module->primitives.entry_usize = typetable_new_size(&module->type_table, false);
     map_insert(module->types, str_from_lit("usize"), &module->primitives.entry_usize);
 
     // isize
-    module->primitives.entry_usize = typetable_new_int(&module->type_table, 64, true);
-    map_insert(module->types, str_from_lit("isize"), &module->primitives.entry_usize);
+    module->primitives.entry_isize = typetable_new_size(&module->type_table, true);
+    map_insert(module->types, str_from_lit("isize"), &module->primitives.entry_isize);
 
     // unsigned int
     module->primitives.entry_u8 = typetable_new_int(&module->type_table, 8, false);
@@ -45,6 +45,13 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("u16"), &module->primitives.entry_u16);
     map_insert(module->types, str_from_lit("u32"), &module->primitives.entry_u32);
     map_insert(module->types, str_from_lit("u64"), &module->primitives.entry_u64);
+
+    // c str
+    module->primitives.entry_c_str = typetable_new_ptr(
+        &module->type_table,
+        module->primitives.entry_u8,
+        false
+    );
 
     // signed int
     module->primitives.entry_i8 = typetable_new_int(&module->type_table, 8, true);
@@ -58,7 +65,7 @@ static void setup_primitive_types(Module* module) {
     map_insert(module->types, str_from_lit("i64"), &module->primitives.entry_i64);
 }
 
-static type_id resolve_type(Module* module, Type* type) {
+static type_id resolve_type(Module* module, Ast_Type* type) {
     if (type == null) { return 0; }
     switch (type->kind) {
         case TypeKind_Void: return module->primitives.entry_void;
@@ -152,8 +159,17 @@ static type_id analyze_expression(Module* module, Expr* expression) {
 
 	    symtable_exit_scope(&module->symbol_table);
 
-            // TODO: evaluate to last expression
-	    return module->primitives.entry_void;
+            Stmt* last_stmt = block->statements[dynarray_len(block->statements) - 1];
+
+            type_id ret_type = module->primitives.entry_void;
+            if (last_stmt->kind == StmtKind_NakedExpr or
+                (last_stmt->kind == StmtKind_Expr and should_remove_statement_semi(last_stmt->expression))
+            ) {
+                ret_type = last_stmt->expression->codegen.type;
+            }
+
+            expression->codegen.type = ret_type;
+            break;
 	}
 	case ExprKind_Let: {
 	    Let* let = expression->let;
@@ -179,7 +195,8 @@ static type_id analyze_expression(Module* module, Expr* expression) {
             entry.type = implicit_type;
 	    symtable_insert(&module->symbol_table, let->name, &entry);
 
-            return module->primitives.entry_void;
+            expression->codegen.type = implicit_type;
+            break;
 	}
         case ExprKind_Symbol: {
 	    String symbol = expression->symbol;
@@ -188,9 +205,13 @@ static type_id analyze_expression(Module* module, Expr* expression) {
 		sil_panic("Use of undeclared variable %.*s", str_format(symbol));
 	    }
 
-            return existing->type;
+            expression->codegen.type = existing->type;
+            break;
 	}
-        case ExprKind_BinOp: { return analyze_bin_op(module, expression->binary_operator); }
+        case ExprKind_BinOp: { 
+            expression->codegen.type = analyze_bin_op(module, expression->binary_operator);
+            break;
+        }
         case ExprKind_FnCall: {
 	    FnCall* fn_call = expression->fn_call;
 
@@ -213,7 +234,8 @@ static type_id analyze_expression(Module* module, Expr* expression) {
                 }
 	    }
 
-            return resolve_type(module, fn_definition->signature->return_type);
+            expression->codegen.type = resolve_type(module, fn_definition->signature->return_type);
+            break;
 	}
         case ExprKind_If: {
             If* if_expr = expression->if_expr;
@@ -224,47 +246,67 @@ static type_id analyze_expression(Module* module, Expr* expression) {
                 sil_panic("if condition must be a bool");
             }
 
-            analyze_expression(module, if_expr->then);
+            type_id eval_type = analyze_expression(module, if_expr->then);
+
             if (if_expr->otherwise != null) {
-                analyze_expression(module, if_expr->otherwise);
+                type_id otherwise_type = analyze_expression(module, if_expr->otherwise);
+                if (otherwise_type != eval_type) {
+                    sil_panic("branches must return the same type");
+                }
             }
 
-            return module->primitives.entry_void;
+            expression->codegen.type = eval_type;
+            break;
         }
         case ExprKind_Loop: {
             analyze_expression(module, expression->loop->body);
-            return module->primitives.entry_void;
+            expression->codegen.type = module->primitives.entry_void;
+            break;
         }
         case ExprKind_Continue:
         case ExprKind_Break: {
-            return module->primitives.entry_void;
+            expression->codegen.type = module->primitives.entry_void;
+            break;
+        }
+        case ExprKind_Unreachable: {
+            expression->codegen.type = module->primitives.entry_never;
+            break;
         }
         case ExprKind_Ret: {
-            return analyze_expression(module, expression->ret);
+            expression->codegen.type = analyze_expression(module, expression->ret);
+            break;
         }
         case ExprKind_Asm: {
-            return module->primitives.entry_i64;
+            expression->codegen.type = module->primitives.entry_isize;
+            break;
         }
 	case ExprKind_NumberLit: {
-            return module->primitives.entry_i32;
+            expression->codegen.type = module->primitives.entry_i32;
+            break;
 	}
         case ExprKind_StringLit: {
-            TypeEntry* char_entry = &module->type_table.types[module->primitives.entry_c_char];
-            if (char_entry->parent_ptr != 0) { return char_entry->parent_ptr; }
-            return typetable_new_ptr(&module->type_table, module->primitives.entry_c_char, false);
+            expression->codegen.type = module->primitives.entry_c_str;
+            break;
         }
         case ExprKind_BoolLit: {
-            return module->primitives.entry_bool;
+            expression->codegen.type = module->primitives.entry_bool;
+            break;
         }
         case ExprKind_Cast: {
-            return resolve_type(module, expression->cast->to);
+            // TODO: actual make sure cast is legit
+            analyze_expression(module, expression->cast->expr);
+            expression->codegen.type = resolve_type(module, expression->cast->to);
+            break;
         }
         default: sil_panic("Analyzer Error: unhandled expression %d", expression->kind);
     }
+
+    return expression->codegen.type;
 }
 
 static bool analyze_statement(Module* module, Stmt* statement) {
     switch (statement->kind) {
+        case StmtKind_NakedExpr:
         case StmtKind_Expr: analyze_expression(module, statement->expression); break;
         default: sil_panic("Analyzer Error: Unhandled Statement Kind");
     }
@@ -285,6 +327,17 @@ static bool analyze_fn_definition(Module* module, FnDef* fn_definition) {
 
     Expr* block = fn_definition->body;
     analyze_expression(module, block);
+
+    Stmt* last_stmt = block->block->statements[dynarray_len(block->block->statements) - 1];
+
+    if (last_stmt->kind != StmtKind_NakedExpr and last_stmt->kind != StmtKind_Expr) {
+        chn_error("last statement in a block must be an expression",);
+    }
+    if (last_stmt->expression->codegen.type != resolve_type(module, fn_definition->signature->return_type)) {
+        type_id last = last_stmt->expression->codegen.type;
+        type_id sig = resolve_type(module, fn_definition->signature->return_type);
+        sil_panic("return value doesn't match signature %zu %zu %.*s", last, sig, str_format(fn_definition->signature->return_type->symbol));
+    }
 
     symtable_exit_scope(&module->symbol_table);
 

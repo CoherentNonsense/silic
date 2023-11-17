@@ -68,7 +68,9 @@ static void end_token(LexerContext* context) {
     token->span.len = (context->offset - (usize)(token->span.ptr - context->module->source.ptr)) + 1;
 
     if (token->kind == TokenKind_Symbol) {
-        if (token_compare_literal(token, "as")) {
+        if (token_compare_literal(token, "unreachable")) {
+            token->kind = TokenKind_KeywordUnreachable;
+        } else if (token_compare_literal(token, "as")) {
             token->kind = TokenKind_KeywordAs;
         } else if (token_compare_literal(token, "asm")) {
             token->kind = TokenKind_KeywordAsm;

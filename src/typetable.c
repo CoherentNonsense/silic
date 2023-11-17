@@ -47,6 +47,15 @@ type_id typetable_new_int(TypeTable* table, usize bits, bool is_signed) {
     return new;
 }
 
+type_id typetable_new_size(TypeTable* table, bool is_signed) {
+    type_id new = typetable_new_type(table, TypeEntryKind_Size, 64);
+
+    TypeEntry* new_entry = &table->types[new];
+    new_entry->integral.is_signed = is_signed;
+
+    return new;
+}
+
 TypeEntry typetable_get(TypeTable* table, type_id id) {
     return table->types[id];
 }

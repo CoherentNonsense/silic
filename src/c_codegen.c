@@ -24,15 +24,31 @@ void write_indent(CodegenContext* context) {
     }
 }
 
+void write_newline(CodegenContext* context) {
+    strbuf_print_lit(&context->strbuf, "\n");
+    write_indent(context);
+}
+
+// TODO: this feels hacky
+static String new_tmp_var(void) {
+    static usize tmp_var_counter = 0;
+
+    StrBuffer buf = strbuf_init();
+    strbuf_printf(&buf, "__sil__tmp_var_%zu", tmp_var_counter++);
+
+    return strbuf_to_string(&buf);
+}
+
 static void generate_statement(CodegenContext* context, Stmt* statement);
 static void generate_expression(CodegenContext* context, Expr* expression);
+static void generate_expression_with_block(CodegenContext* context, Expr* expression, String* bind);
 
 static void generate_type(CodegenContext* context, type_id type) {
     TypeEntry* type_entry = &context->module->type_table.types[type];
     switch (type_entry->kind) {
         case TypeEntryKind_Invalid: { sil_panic("generating invalid type"); }
         case TypeEntryKind_Void: { strbuf_print_lit(&context->strbuf, "void"); break; }
-        case TypeEntryKind_Never: { strbuf_print_lit(&context->strbuf, "void"); break; }
+        case TypeEntryKind_Never: { strbuf_print_lit(&context->strbuf, "void /* never */"); break; }
         case TypeEntryKind_Ptr: {
             generate_type(context, type_entry->ptr.to);
             strbuf_printf(&context->strbuf, "%s*", type_entry->ptr.is_mut ? "" : " const");
@@ -41,10 +57,16 @@ static void generate_type(CodegenContext* context, type_id type) {
         case TypeEntryKind_Bool: { strbuf_print_lit(&context->strbuf, "bool"); break; }
         case TypeEntryKind_Int: {
             strbuf_printf(&context->strbuf, "%c%zu", type_entry->integral.is_signed ? 'i' : 'u', type_entry->bits);
+            break;
+        }
+        case TypeEntryKind_Size: {
+            strbuf_printf(&context->strbuf, "%csize", type_entry->integral.is_signed ? 'i' : 'u');
+            break;
         }
     }
 }
-static void generate_type_old(CodegenContext* context, Type* type) {
+
+static void generate_type_old(CodegenContext* context, Ast_Type* type) {
     switch (type->kind) {
         case TypeKind_Void: {
             strbuf_print_lit(&context->strbuf, "void");
@@ -71,13 +93,54 @@ static void generate_type_old(CodegenContext* context, Type* type) {
     }
 }
 
-static void generate_block(CodegenContext* context, Block* block) {
+static void generate_block(CodegenContext* context, Expr* block_expr, String* bind) {
+    Block* block = block_expr->block;
+
     strbuf_print_lit(&context->strbuf, "{\n");
     context->indent_level += 1;
 
-    for (usize i = 0; i < dynarray_len(block->statements); i++) {
+    for (usize i = 0; i < dynarray_len(block->statements) - 1; i++) {
         Stmt* statement = block->statements[i];
+        write_indent(context);
         generate_statement(context, statement);
+    }
+
+    Stmt* last_stmt = block->statements[dynarray_len(block->statements) - 1];
+    if (block_expr->codegen.type != TypeEntryKind_Void) {
+        write_indent(context);
+        if (last_stmt->kind == StmtKind_NakedExpr) {
+            // naked expressions don't have blocks
+            if (bind == null) {
+                strbuf_print_lit(&context->strbuf, "return ");
+                generate_expression(context, last_stmt->expression);
+                strbuf_print_lit(&context->strbuf, ";\n");
+            } else {
+                strbuf_printf(&context->strbuf, "%.*s = ", str_format((*bind)));
+                generate_expression(context, last_stmt->expression);
+                strbuf_print_lit(&context->strbuf, ";\n");
+            }
+
+        } else if (should_remove_statement_semi(last_stmt->expression)) {
+            // block expression
+            String tmp_eval = new_tmp_var();
+            generate_type(context, block_expr->codegen.type);
+            strbuf_printf(&context->strbuf, " %.*s;", str_format(tmp_eval));
+            write_newline(context);
+            generate_expression_with_block(context, last_stmt->expression, &tmp_eval);
+            write_newline(context);
+
+            if (bind != null) {
+                strbuf_printf(&context->strbuf, "%.*s = %.*s;\n", str_format((*bind)), str_format(tmp_eval));
+            } else {
+                strbuf_printf(&context->strbuf, "return %.*s;\n", str_format(tmp_eval));
+            }
+
+            str_deinit(tmp_eval);
+
+        } else {
+            // plain statement
+            generate_statement(context, last_stmt);
+        }
     }
 
     context->indent_level -= 1;
@@ -111,11 +174,10 @@ static void generate_binop(CodegenContext* context, BinOp* binop) {
     strbuf_print_lit(&context->strbuf, ")");
 }
 
-static void generate_asm(CodegenContext* context, Asm* asm) {
-    // HACK: this wholbe backend is really all a hack tbh
-    static char tmp_var[] = "expr_val0";
+static void generate_asm(CodegenContext* context, Asm* asm, String* output) {
+    String tmp_output = new_tmp_var();
     for (usize i = 0; i < dynarray_len(asm->outputs); i += 1) {
-        strbuf_printf(&context->strbuf, "isize %s;\n", tmp_var);
+        strbuf_printf(&context->strbuf, "isize %.*s;\n", str_format(tmp_output));
     }
 
     write_indent(context);
@@ -127,7 +189,7 @@ static void generate_asm(CodegenContext* context, Asm* asm) {
     strbuf_print_lit(&context->strbuf, ":");
 
     // HACK: only one output rn
-    strbuf_printf(&context->strbuf, "\"=%.*s\"(%s):", str_format(asm->outputs[0]), tmp_var);
+    strbuf_printf(&context->strbuf, "\"=%.*s\"(%.*s):", str_format(asm->outputs[0]), str_format(tmp_output));
 
     for (usize i = 0; i < dynarray_len(asm->inputs); i += 1) {
         if (i > 0) { strbuf_print_lit(&context->strbuf, ","); }
@@ -146,10 +208,14 @@ static void generate_asm(CodegenContext* context, Asm* asm) {
 
     strbuf_print_lit(&context->strbuf, ");");
 
-    tmp_var[8] += 1;
+    if (output != null) {
+        strbuf_print_lit(&context->strbuf, "\n");
+        write_indent(context);
+        strbuf_printf(&context->strbuf, "%.*s = %.*s;", str_format((*output)), str_format(tmp_output));
+    }
 }
 
-static void generate_expression(CodegenContext* context, Expr* expression) {
+static void generate_expression_with_block(CodegenContext* context, Expr* expression, String* bind) {
     switch (expression->kind) {
 	case ExprKind_NumberLit: {
 	    generate_number_literal(context, expression->number_literal);
@@ -167,7 +233,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
         }
 
 	case ExprKind_Symbol: {
-            strbuf_printf(&context->strbuf, "var_%.*s", str_format(expression->symbol));
+            strbuf_printf(&context->strbuf, "%.*s", str_format(expression->symbol));
 	    break;
 	}
 
@@ -191,7 +257,15 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	case ExprKind_Let: {
             generate_type(context, expression->codegen.type);
 
-	    strbuf_printf(&context->strbuf, " var_%.*s = ", str_format(expression->let->name));
+            if (should_remove_statement_semi(expression->let->value)) {
+                strbuf_printf(&context->strbuf, " %.*s;\n", str_format(expression->let->name));
+                write_indent(context);
+                generate_expression_with_block(context, expression->let->value, &expression->let->name);
+
+                break;
+            }
+
+	    strbuf_printf(&context->strbuf, " %.*s = ", str_format(expression->let->name));
 	    generate_expression(context, expression->let->value);
 
 	    break;
@@ -205,20 +279,23 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	}
 
 	case ExprKind_Block: {
-	    generate_block(context, expression->block);
+	    generate_block(context, expression, bind);
 	    break;
 	}
 
-	case ExprKind_BinOp: generate_binop(context, expression->binary_operator); break;
+        case ExprKind_BinOp: {
+            generate_binop(context, expression->binary_operator);
+            break;
+        }
 
 	case ExprKind_If: {
 	    strbuf_print_lit(&context->strbuf, "if (");
 	    generate_expression(context, expression->if_expr->condition);
 	    strbuf_print_lit(&context->strbuf, ") ");
-	    generate_block(context, expression->if_expr->then->block);
+	    generate_expression_with_block(context, expression->if_expr->then, bind);
 	    if (expression->if_expr->otherwise != null) {
 		strbuf_print_lit(&context->strbuf, " else ");
-		generate_expression(context, expression->if_expr->otherwise);
+		generate_expression_with_block(context, expression->if_expr->otherwise, bind);
 	    }
 
 	    break;
@@ -227,7 +304,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 	case ExprKind_Match: {
 	    Match* match = expression->match;
 	    strbuf_print_lit(&context->strbuf, "switch (");
-	    generate_expression(context, expression->match->condition);
+	    generate_expression_with_block(context, expression->match->condition, bind);
 	    strbuf_print_lit(&context->strbuf, ") {\n");
 	    context->indent_level += 1;
 	    for (usize i = 0; i < dynarray_len(match->arms); i++) {
@@ -236,7 +313,7 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 		strbuf_print_lit(&context->strbuf, "case ");
 		generate_number_literal(context, arm->pattern);
 		strbuf_print_lit(&context->strbuf, ": ");
-		generate_expression(context, arm->then);
+		generate_expression_with_block(context, arm->then, bind);
 		if (arm->then->kind != ExprKind_Block) {
 		    strbuf_print_lit(&context->strbuf, "; break;");
 		} else {
@@ -252,15 +329,16 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
 
         case ExprKind_Loop: {
             strbuf_print_lit(&context->strbuf, "while (true) ");
-            generate_expression(context, expression->loop->body);
+            generate_expression_with_block(context, expression->loop->body, bind);
             break;
         }
 
         case ExprKind_Break: { strbuf_print_lit(&context->strbuf, "break"); break; }
         case ExprKind_Continue: { strbuf_print_lit(&context->strbuf, "continue"); break; }
+        case ExprKind_Unreachable: { strbuf_print_lit(&context->strbuf, "/* unreachable */"); break; }
 
         case ExprKind_Asm: {
-            generate_asm(context, expression->asm);
+            generate_asm(context, expression->asm, bind);
             break;
         }
 
@@ -276,11 +354,16 @@ static void generate_expression(CodegenContext* context, Expr* expression) {
     }
 }
 
+static void generate_expression(CodegenContext* context, Expr* expression) {
+    generate_expression_with_block(context, expression, null);
+}
+
 static void generate_statement(CodegenContext* context, Stmt* statement) {
-    write_indent(context);
-    if (statement->kind == StmtKind_Expr) {
-	generate_expression(context, statement->expression);
-        strbuf_printf(&context->strbuf, "%s\n", parser_should_remove_statement_semicolon(statement->expression) ? "" : ";");
+    switch (statement->kind) {
+        case StmtKind_Expr:
+        case StmtKind_NakedExpr:
+            generate_expression(context, statement->expression);
+            strbuf_printf(&context->strbuf, "%s\n", should_remove_statement_semi(statement->expression) ? "" : ";");
     }
 }
 
@@ -306,7 +389,7 @@ static void generate_fn_signature(CodegenContext* context, Item* item) {
         if (i > 0) { strbuf_print_lit(&context->strbuf, ", "); }
 	FnParam* parameter = signature->parameters[i];
 	generate_type_old(context, parameter->type);
-	strbuf_printf(&context->strbuf, " const var_%.*s", str_format(parameter->name));
+	strbuf_printf(&context->strbuf, " const %.*s", str_format(parameter->name));
     }
 
     strbuf_print_lit(&context->strbuf, ")");
@@ -320,7 +403,7 @@ static void generate_definition(CodegenContext* context, Item* item) {
 	    }
 	    generate_fn_signature(context, item);
 	    strbuf_print_lit(&context->strbuf, " ");
-	    generate_block(context, item->fn_definition->body->block);
+	    generate_block(context, item->fn_definition->body, null);
 	    strbuf_print_lit(&context->strbuf, "\n\n");
 	    break;
 	
