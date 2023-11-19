@@ -1,3 +1,5 @@
+**Moving to Gitea ->** https://gitea.com/cohnon/silic
+
 # Silic Programming Language
 
 A systems language with an emphasis on simplicity and expressivity.
